@@ -82,7 +82,10 @@ View(filtoutput)
 # 7035457 raw reads
 # How many total filtered reads?
 # I retained 6210016 reads
-comparison[nrow(comparison) + 1, ] <- c("Filtered reads", "6210016", "4150123")
+comparison[nrow(comparison) + 1, ] <- c("Total filtered reads", 6210016, 4150123)
+median(as.data.frame(filtoutput)$reads.out[1:76])
+comparison[nrow(comparison) + 1, ] <- c("Median exp_samp filtered reads", 72591, NA)
+comparison[nrow(comparison) + 1, ] <- c("Minimum exp_samp filtered reads", 12559, NA)
 
 ## Lab 3---------------------------
   # DADA2 learn error rates (Lab 3) ----------------------------
@@ -125,12 +128,12 @@ View(SVs_found_by_sample)
 # Most SVs: B213_R1_F_filt.fastq.gz -- 532
 
 summary(SVs_found_by_sample$SVs[1:76])
-comparison[nrow(comparison) + 1, ] <- c("Median ASV per exp samp", 144.5, 80)
-summary(rowSums(seqtab_nochim_decontam))
-comparison[nrow(comparison) + 1, ] <- c("Median reads per exp samp after clean", 19226, 47323)
+comparison[nrow(comparison) + 1, ] <- c("Median ASV per exp_samp", 144.5, 80)
 
 
-# 1. Remove chimeras. Leave the method as consensus. multithread processing can be used with mac or linux, and verbose means it will print results to the screen		
+
+## Remove chimeras. Leave the method as consensus. -------------
+# multithread processing can be used with mac or linux, and verbose means it will print results to the screen		
 seqtab_nochim <- removeBimeraDenovo(seqtab, method = "consensus", multithread = TRUE, verbose = TRUE) 
 # My samples have Identified 875 bimeras out of 6019 input sequences.
 
@@ -142,6 +145,10 @@ dim(seqtab_nochim)
 round(sum(seqtab_nochim)/sum(seqtab), digits = 3) # 0.996
 sort(rowSums(seqtab_nochim))
 # Experimental sample with fewest reads is B136, 6123 reads
+median(rowSums(seqtab_nochim[1:76,]))
+comparison[nrow(comparison) + 1, ] <- c("Median reads per exp_samp after dechim", 67171, NA)
+summary(rowSums(seqtab_nochim[1:76,]))
+comparison[nrow(comparison) + 1, ] <- c("Minimum reads per exp_samp after dechim", 6123, NA)
 
 # 3. Save your chimera-free sequence table.
 saveRDS(seqtab_nochim, 'seqtab_nochim.rds')
@@ -353,6 +360,14 @@ plot_ordination(clean_data, clean_ord,
                 title = "Ordination plot, after clean")
 ggsave("after_clean_ordination_plot.png") # save this graph for later
 
+median(rowSums(clean_data@otu_table))
+comparison[nrow(comparison) + 1, ] <- c("Median reads per exp_samp after clean", 19226, 47323)
+summary(rowSums(clean_data@otu_table))
+comparison[nrow(comparison) + 1, ] <- c("Minimum reads per exp_samp after clean", 287, NA)
+
+comparison[nrow(comparison) + 1, ] <- c("Total SVs before clean", 5144, NA)
+comparison[nrow(comparison) + 1, ] <- c("Total SVs before clean after clean", 4952, NA)
+
 
 ### Summary of decontamination ----
 # FIXME
@@ -436,11 +451,8 @@ saveRDS(phylo_clean_with_species, "phylo_clean_with_species.rds")
 # Regardless of whether you included sequenced negative controls, you can remove taxa which are of no interest to you
 
 # clean out chloroplast and mitochondria. can also elect to remove other contaminating domains or kingdoms as needed. 
-#== it means to keep that, or set as equal to it. if you have != it means not that (not matching). & adds more sections to this.
-# require(dplyr)
 
 # phylo_clean_with_species <- readRDS("phylo_clean_with_species.rds")
-
 # Optional: explore your taxonomy before filtering. Use the tax table you made
 
 df <- as.data.frame(phylo_clean_with_species@tax_table)
@@ -486,7 +498,8 @@ sort(rowSums(otu_table(phylo_clean_with_species)))
 # If I cut at 1k I would only lose 2 samples
 # Cut off at 2000 which sadly does mean 12 are lost
 # In the paper they rarified to 12k, I don't understand how I lost so many reads
-
+comparison[nrow(comparison) + 1, ] <- c("Median reads before rarify", 15255, NA)
+comparison[nrow(comparison) + 1, ] <- c("Minimum reads before rarify", 122, 12000)
 
 
 phylo_rar <- rarefy_even_depth(phylo_clean_with_species, 
@@ -547,24 +560,6 @@ saveRDS(phylo_clean_no_strep_rar, 'phylo_clean_no_strep_rar.rds')
 # See separate .R file named nasal_aspirate_plots
 
 
-
-# richness plot with significance added
-library(ggplot2)
-library(ggsignif)
-
-
-# richness plot observed SVs with lines to fit the view screen
-plot_richness(EX_ps_clean.rar, 
-              x="Treatment", #CHANGE ME, A is whatever factor you want on x-axis
-              measures="Observed", #CHANGE ME, whatever richness you want. = c("Observed","Shannon")
-              title = NULL) + 
-  theme_set(theme_minimal(base_size = 14)) + 
-  geom_violin(trim=TRUE, aes(fill=Diet)) + #optional. CHANGE ME, A is whatever factor to color violins
-  geom_boxplot(width = 0.1, aes(group=Treatment)) + #optional. CHANGE ME, A is whatever factor to group boxplots
-  # theme(legend.position = "none") + #use to get rid of your legend
-  ylab("Observed Bacterial Richness (SVs)") + 
-  ylim(0,1500) + #define the y axis min/max
-  geom_segment(aes(x = 1, y = 1200, xend = 2, yend = 1200)) +  geom_text(x = 1.5, y = 1250, label = "***") # add a drawn in line and significance tag, adjusting the x and y coordinates till it fits where you want in the window.  Add another for each line to add. As written, this will fit the view window you have, if you adjust that your segments will not adjust with it.
 
 
 
