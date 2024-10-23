@@ -337,53 +337,72 @@ meta <- readRDS("meta.rds")
 # load_lab_five_partB() # phylo and meta
 
 
-# Dr. Ishaq's method: https://github.com/SueIshaq/Examples-DADA2-Phyloseq
-
-## ------ Dr Ishaq's method -------------
-
-# Dr. Ishaq's method creates vectors out of the SV table data for negative controls, and subtracts those SVs from the sample data.  Depending on the type of negative control, these are removed from the whole data set or from subsets of batches. Remove PCR and sampling materials negative control SVs fully from all samples, and remove extraction kit SVs fully from each dna_extraction_batch, respectively.
-# With modifications by Emily
-
-clean_data <-  clean_phylo_data(phylo, neg_con = "negative")
-clean_data
-# Ends up with 4952/5144 taxa and 76/93 samples maintained
-saveRDS(clean_data, "clean_data.rds")
-
-# Did it work? Check your ordination again
-clean_ord <- ordinate(clean_data, #calculate similarities
-                      method = "PCoA", #ordination type
-                      "jaccard", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted)
-
-plot_ordination(clean_data, clean_ord, 
-                type = "samples", color = "Group", 
-                title = "Ordination plot, after Ishaq clean")
-ggsave("after_clean_ordination_plot.png") # save this graph for later
-
-median(rowSums(clean_data@otu_table))
-comparison[nrow(comparison) + 1, ] <- c("Median reads per exp_samp after clean", 19226, 47323)
-summary(rowSums(clean_data@otu_table))
-comparison[nrow(comparison) + 1, ] <- c("Minimum reads per exp_samp after clean", 287, NA)
-
-comparison[nrow(comparison) + 1, ] <- c("Total SVs before clean", 5144, NA)
-comparison[nrow(comparison) + 1, ] <- c("Total SVs before clean after clean", 4952, NA)
-
-
-### Summary of decontamination ----
-# FIXME
-# CHANGE ME: Which types of negative controls did you use and why? 
-# CHANGE ME: Did you notice clustering by batch before and after removing contaminants?
-
 
 ## ------ Decontam method -------------
- # Analysis branched off, see nasal_decontam_method.R
+phylo <- readRDS("phylo.rds")
+
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("decontam")
+
+library(decontam) # This packages identify contaminants by frequency of SVs.
+
+#### skipped, no quant data ----------
+# The first contaminant identification method uses the distribution of the frequency of each sequence as a function of the input DNA concentration. Essentially, is it too rare to be real?
+# 
+
+# The second contaminant identification method uses prevalence (presence/absence) across samples as compared to the prevalence in negative controls. Essentially, is it in most of your samples but not most of your controls?
+
+# 7. Identify negative controls by indicating which column/factor in your metadata and which variable indicate a negative control
+sample_data(phylo)$is.neg <- sample_data(phylo)$Group == "controlneg"
+
+# 8. Calculate prevalence of SVs in samples versus controls
+contamdf.prev05 <- isContaminant(phylo, method = "prevalence", neg = "is.neg", threshold = 0.5)
+
+# 9. Make a table
+table(contamdf.prev05$contaminant)
+
+# 10. Look at it
+head(which(contamdf.prev05$contaminant))
+
+# 11. get rid of the contaminants 
+# remove them from the original phyloseq object, or the one with cleaned out SVs by frequency
+phylo_clean_decontam_decontam <- prune_taxa(!contamdf.prev05$contaminant, phylo) 
+
+# 12. Check how many are left
+phylo_clean_decontam_decontam
+# 93 samples and 5074 SVs left
+saveRDS(phylo_clean_decontam_decontam, "phylo_clean_decontam_decontam.rds")
+
+# 13. Did it work? Check your ordination again
+phylo_clean_ord <- ordinate(phylo_clean_decontam_decontam, #calculate similarities
+                            method = "PCoA", #ordination type
+                            "jaccard", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted)
+
+plot_ordination(phylo_clean_decontam_decontam, 
+                phylo_clean_ord, 
+                type = "samples", 
+                color = "Group",
+                title = "After cleaning with decontam")
+ggsave("ord_plot_after_decontam.png")
+# save this graph for later
+
+
+median(rowSums(phylo_clean_decontam_decontam@otu_table[1:76,]))
+comparison[nrow(comparison) + 1, ] <- c("Median reads per exp_samp after decontam method", 66853, 47323)
+summary(rowSums(phylo_clean_decontam_decontam@otu_table[1:76,]))
+comparison[nrow(comparison) + 1, ] <- c("Minimum reads per exp_samp after decontam method", 6112, NA)
+median(rowSums(phylo_clean_decontam_decontam@otu_table[77:93,]))
+comparison[nrow(comparison) + 1, ] <- c("Median reads per neg_ct after decontam method", 249, NA)
+summary(rowSums(phylo_clean_decontam_decontam@otu_table[77:93,]))
+comparison[nrow(comparison) + 1, ] <- c("Minimum reads per exp_samp after decontam method", 28, NA)
+
+
 
 ### Summary of decontamination ----
 # CHANGE ME: Which types of negative controls did you use and why? 
 # CHANGE ME: Did you notice clustering by batch before and after removing contaminants?
-
-
-
-
 
 
 
@@ -398,56 +417,54 @@ comparison[nrow(comparison) + 1, ] <- c("Total SVs before clean after clean", 49
 # 1. take the SVs (otu table) from the phyloseq object and make it into a dataframe again
 
 
-clean_data <- readRDS("clean_data.rds")
+phylo_clean_decontam_decontam <- readRDS("phylo_clean_decontam_decontam.rds")
 
-seqtab_nochim_decontam = as(otu_table(clean_data), "matrix")
+seqtab_nochim_decontam = as(otu_table(phylo_clean_decontam_decontam), "matrix")
 seqtab_nochim_decontam = as.matrix(seqtab_nochim_decontam)
 
 ## 2. assign taxonomy. this may be memory intensive, and may take a few hours on slow laptops.
-clean_all_taxa <- assignTaxonomy(seqtab_nochim_decontam, 
-                                 'silva_nr99_v138.1_train_set.fa.gz',        # CHANGE file path
-                                 tryRC = TRUE, # If you didn't get any IDs the first time, Use this to try the reverse complement of your sequences instead
-                                 minBoot = 75, verbose = TRUE) # ; beep("treasure") 
+decontam_all_taxa <- assignTaxonomy(seqtab_nochim_decontam, 
+                                    'silva_nr99_v138.1_train_set.fa.gz',        # CHANGE file path
+                                    tryRC = TRUE, # If you didn't get any IDs the first time, Use this to try the reverse complement of your sequences instead
+                                    minBoot = 75, verbose = TRUE) # ; beep("treasure") 
 
 
 
-saveRDS(clean_all_taxa, 'clean_all_taxa.rds')
-write.csv(clean_all_taxa, 'clean_all_taxa.csv')
-# clean_all.taxa
+saveRDS(decontam_all_taxa, 'decontam_all_taxa.rds')
+write.csv(decontam_all_taxa, 'decontam_all_taxa.csv')
+# decontam_all_taxa
 
 # OPTIONAL: try adding species designation to the table. this may be memory intensive, and may take a few hours on slow laptops.You can also try this after the Lab 6 step to remove certain taxa by name, in case you need to save on computational space.
-# clean_all_taxa <- readRDS("clean_all_taxa.rds")
+# decontam_all_taxa <- readRDS("decontam_all_taxa.rds")
 
-# clean_all_taxa <- readRDS("clean_all_taxa.rds")
-clean_all_taxa_species <- addSpecies(clean_all_taxa, 'silva_species_assignment_v138.1.fa.gz', allowMultiple = FALSE, verbose = FALSE) # ; beep("treasure") 
 
-saveRDS(clean_all_taxa_species, 'clean_all_taxa_species.rds') 
-write.csv(clean_all_taxa_species, 'clean_all_taxa_species.csv') 
+decontam_all_taxa_species <- addSpecies(decontam_all_taxa, 
+                                        'silva_species_assignment_v138.1.fa.gz', 
+                                        allowMultiple = FALSE, 
+                                        verbose = FALSE) ; beep("treasure") 
 
-## Remake the phyloseq object with the new taxonomy file ----------------------
+saveRDS(decontam_all_taxa_species, 'decontam_all_taxa_species.rds') 
+write.csv(decontam_all_taxa_species, 'decontam_all_taxa_species.csv') 
+
+### Remake the phyloseq object with the new taxonomy file ----------------------
 
 # reload metadata table as needed
 meta <- readRDS("meta.rds")
-clean_data <- readRDS("clean_data.rds")
+phylo_clean_decontam_decontam <- readRDS("phylo_clean_decontam_decontam.rds")
 
 #reload taxa table as needed
-clean_all_taxa_species <- readRDS('clean_all_taxa_species.rds')
+decontam_all_taxa_species <- readRDS('decontam_all_taxa_species.rds')
 
-# troubleshooting
-class(otu_table(clean_data))
-class(meta)
-class(tax_table(clean_all_taxa_species))
-class(clean_all_taxa_species)
 
-otu_t <- otu_table(clean_data)
+otu_t <- otu_table(phylo_clean_decontam_decontam)
 
 ## create a phyloseq object with all samples
-phylo_clean_with_species <- phyloseq(otu_table(otu_t, taxa_are_rows = FALSE), 
-                                     sample_data(meta),
-                                     tax_table(clean_all_taxa_species))
+phylo_decontam_with_species <- phyloseq(otu_table(otu_t, taxa_are_rows = FALSE), 
+                                        sample_data(meta),
+                                        tax_table(decontam_all_taxa_species))
 
 
-saveRDS(phylo_clean_with_species, "phylo_clean_with_species.rds")
+saveRDS(phylo_decontam_with_species, "phylo_decontam_with_species.rds")
 
 
 
@@ -459,17 +476,17 @@ saveRDS(phylo_clean_with_species, "phylo_clean_with_species.rds")
 # phylo_clean_with_species <- readRDS("phylo_clean_with_species.rds")
 # Optional: explore your taxonomy before filtering. Use the tax table you made
 
-df <- as.data.frame(phylo_clean_with_species@tax_table)
+df <- as.data.frame(phylo_decontam_with_species@tax_table)
 table(df$Kingdom)
 table(df$Phylum)
 table(df$Class)
 table(df$Order)
 table(df$Family)
 
-phylo_clean_with_species <- phylo_clean_with_species %>% # CHANGE ME to your phyloseq object name 
+phylo_decontam_with_species <- phylo_decontam_with_species %>% # CHANGE ME to your phyloseq object name 
   subset_taxa(Family != "Mitochondria" & Order != "Chloroplast") # CHANGE ME to taxa you want to remove
 
-saveRDS(phylo_clean_with_species, "phylo_clean_with_species.rds")
+saveRDS(phylo_decontam_with_species, "phylo_decontam_with_species.rds")
 
 # Write out a description of experimental design (Homework)
 # FIXME
@@ -484,7 +501,7 @@ saveRDS(phylo_clean_with_species, "phylo_clean_with_species.rds")
 # make a rarefaction curve to see if your samples have enough coverage. To make it prettier, check out this tutorial: https://fromthebottomoftheheap.net/2015/04/16/drawing-rarefaction-curves-with-custom-colours/
 #
 
-tab <- otu_table(phylo_clean_with_species)
+tab <- otu_table(phylo_decontam_with_species)
 class(tab) <- "matrix" # as.matrix() will do nothing
 ## you get a warning here, but this is what we need to have
 tab <- t(tab) # transpose observations to rows
@@ -495,65 +512,61 @@ r_curve <- rarecurve(tab, step = 10, cex = 0.5, label = FALSE)
 # optional to save this plot
 
 # take a look at rowsums, or total sequences per sample
-sort(rowSums(otu_table(phylo_clean_with_species)))
-# smallest reads (sequences) in a sample ______ B271 - 122
-# largest in a sample ______ B166- 186343
-# number of samples with <5000 ______ 17
-# If I cut at 1k I would only lose 2 samples
-# Cut off at 2000 which sadly does mean 12 are lost
+sort(rowSums(otu_table(phylo_decontam_with_species)))
+# smallest reads (sequences) in a sample ______ B136 -- 2922 
+# largest in a sample ______ B166 197735
+# number of experimental samples with <5000 ______ 1
 # In the paper they rarified to 12k, I don't understand how I lost so many reads
-comparison[nrow(comparison) + 1, ] <- c("Median reads before rarify", 15255, NA)
-comparison[nrow(comparison) + 1, ] <- c("Minimum reads before rarify", 122, 12000)
 
 
-phylo_rar <- rarefy_even_depth(phylo_clean_with_species, 
-                                          sample.size = 2000, # CHANGE ME to the sequences/sample you want. 5-10k is a good amount, more is better
-                                          replace = TRUE, #sampling with or without replacement
-                                          trimOTUs = TRUE, #remove SVs left empty (called OTUs here but really they are SVs) 
-                                          rngseed = 711, 
-                                          verbose = TRUE)
+phylo_decontam_rar <- rarefy_even_depth(phylo_decontam_with_species, 
+                                        sample.size = 5000, # CHANGE ME to the sequences/sample you want. 5-10k is a good amount, more is better
+                                        replace = TRUE, #sampling with or without replacement
+                                        trimOTUs = TRUE, #remove SVs left empty (called OTUs here but really they are SVs) 
+                                        rngseed = 711, 
+                                        verbose = TRUE)
 # set.seed(711) was used
-# 12 samples removed
-# 358 OTUs removed
+# 17 negative control samples removed and one experimental sample
+# 363 OTUs removed
 
 
 # this helps with plotting later
-sample_data(phylo_rar)$Group <- factor(sample_data(phylo_rar)$Group, 
-                                       levels = c("IPD_ATB", "IPD"), 
-                                       labels = c("Antibiotics", "No antibiotics")) #CHANGE ME
+sample_data(phylo_decontam_rar)$Group <- factor(sample_data(phylo_decontam_rar)$Group, 
+                                                levels = c("IPD_ATB", "IPD"), 
+                                                labels = c("Antibiotics", "No antibiotics")) #CHANGE ME
 
-saveRDS(phylo_rar, "clean_phylo_rarified.rds")
+saveRDS(phylo_decontam_rar, "decontam_phylo_rarified.rds")
 
 # Helpful to have an SV table from the clean, rarefied phyloseq
-write.csv(otu_table(phylo_rar), 'clean_phylo_rarified.csv')
+write.csv(otu_table(phylo_decontam_rar), 'decontam_phylo_rarified.csv')
 
 # Specifying taxa after rarification
 
-phylo_clean_strep_rar  <- phylo_rar  %>% 
+phylo_decontam_strep_rar  <- phylo_decontam_rar  %>% 
   subset_taxa(Family == "Streptococcaceae") 
 
-phylo_clean_no_strep_rar   <- phylo_rar  %>% 
+phylo_decontam_no_strep_rar   <- phylo_decontam_rar  %>% 
   subset_taxa(Family != "Streptococcaceae") 
 
 
 ## clean out taxa/SV columns that are no longer present
-phylo_clean_strep_rar <- prune_taxa(taxa_sums(phylo_clean_strep_rar) > 0, phylo_clean_strep_rar)
-phylo_clean_strep_rar <- prune_samples(sample_sums(phylo_clean_strep_rar) > 0, phylo_clean_strep_rar)
-phylo_clean_strep_rar
-# 51 samples, 54 taxa
+phylo_decontam_strep_rar <- prune_taxa(taxa_sums(phylo_decontam_strep_rar) > 0, phylo_decontam_strep_rar)
+phylo_decontam_strep_rar <- prune_samples(sample_sums(phylo_decontam_strep_rar) > 0, phylo_decontam_strep_rar)
+phylo_decontam_strep_rar
+# 73 samples, 64 taxa
 
-phylo_clean_no_strep_rar <- prune_taxa(taxa_sums(phylo_clean_no_strep_rar) > 0, phylo_clean_no_strep_rar)
-phylo_clean_no_strep_rar <- prune_samples(sample_sums(phylo_clean_no_strep_rar) > 0, phylo_clean_no_strep_rar)
-phylo_clean_no_strep_rar
-# 64 samples, 1360 taxa
+phylo_decontam_no_strep_rar <- prune_taxa(taxa_sums(phylo_decontam_no_strep_rar) > 0, phylo_decontam_no_strep_rar)
+phylo_decontam_no_strep_rar <- prune_samples(sample_sums(phylo_decontam_no_strep_rar) > 0, phylo_decontam_no_strep_rar)
+phylo_decontam_no_strep_rar
+# 75 samples, 1457 taxa
 
 
-saveRDS(phylo_clean_strep_rar, 'phylo_clean_strep_rar.rds') 
-saveRDS(phylo_clean_no_strep_rar, 'phylo_clean_no_strep_rar.rds') 
+saveRDS(phylo_decontam_strep_rar, 'phylo_decontam_strep_rar.rds') 
+saveRDS(phylo_decontam_no_strep_rar, 'phylo_decontam_no_strep_rar.rds') 
 
 
 # meta <- readRDS("meta.rds")
-# phylo_rar <- readRDS("clean_phylo_rarified.rds")
+
 
 # plot alpha diversity with phyloseq: https://www.rdocumentation.org/packages/phyloseq/versions/1.16.2/topics/plot_richness. 
 # measures include c("Observed", "Chao1", "ACE", "Shannon", "Simpson", "InvSimpson", "Fisher")
@@ -567,22 +580,21 @@ saveRDS(phylo_clean_no_strep_rar, 'phylo_clean_no_strep_rar.rds')
 
 
 
-
 ## Alpha diversity plotted against other metadata -----
 
 # use phyloseq to measure alpha diversity
-phylo_rar_rich <- estimate_richness(phylo_rar, measures = c("Observed", "Shannon")) #change to whatever measures you want
+phylo_rar_rich <- estimate_richness(phylo_decontam_rar, measures = c("Observed", "Shannon")) #change to whatever measures you want
 
 # # OPTIONAL: use phyloseq to calculate Faith's Diversity metric, https://rdrr.io/github/twbattaglia/btools/man/estimate_pd.html
-# install.packages("remotes")
-# remotes::install_github("twbattaglia/btools")
-# EX_faith <- estimate_pd(EX_ps_clean.rar)
+  # install.packages("remotes")
+  # remotes::install_github("twbattaglia/btools")
+  # EX_faith <- estimate_pd(EX_ps_clean.rar)
 
 # measure evenness for each sample
 phylo_rar_even <- phylo_rar_rich$Shannon/log(phylo_rar_rich$Observed)
 
 # Coerce to data.frame and add the metadata for these samples
-phylo_rar_sd = as(sample_data(phylo_rar), "matrix")
+phylo_rar_sd = as(sample_data(phylo_decontam_rar), "matrix")
 phylo_rar_sd = as.data.frame(phylo_rar_sd)
 phylo_rar_rich_df <- cbind(phylo_rar_rich, phylo_rar_even, phylo_rar_sd)
 
@@ -598,7 +610,7 @@ ggplot(phylo_rar_rich_df, aes(x = Group, y = Observed)) +
   # theme(text = element_text(size = 20)) # increases font size
   ggtitle("Bacterial richness")
 
-# skipped, maybe come back later
+### skipped, maybe come back later --------
 
 # # make that same graph but drop any samples that lack data for that FactorA (replace FactorA in the code with your factor name).
 # ggplot(data=subset(EX_ps_clean.rar.rich.df, !is.na(FactorA)), aes(x=Temperature, y=Observed)) + 
@@ -621,3 +633,127 @@ alpha_diversity_table
   
   
   
+  
+  
+  # Alpha diversity metrics statistics (Lab 8)--------------
+# Phyloseq can measure and visualize alpha diversity: https://joey711.github.io/phyloseq/plot_richness-examples.html
+# phyloseq doesn't do stats or more complex graphs
+
+
+# use phyloseq to measure alpha diversity
+
+phylo_decontam_rar_rich <- estimate_richness(phylo_decontam_rar, measures = c("Observed", "Shannon")) #change to whatever measures you want
+
+# use phyloseq to calculate Faith's Diversity metric (optional), https://rdrr.io/github/twbattaglia/btools/man/estimate_pd.html
+# EX_faith <- estimate_pd(EX_ps_clean.rar)
+
+# OPTIONAL measure evenness for each SV individually
+library(asbio)
+library(microbiome)
+phylo_decontam_rar_even_SV <- evenness(otu_table(phylo_decontam_rar, taxa_are_rows = FALSE))
+
+# measure evenness for each sample
+phylo_decontam_rar_even <- phylo_decontam_rar_rich$Shannon/log(phylo_decontam_rar_rich$Observed)
+
+
+# Coerce to data.frame and add the metadata for these samples
+phylo_decontam_rar_sd = as(sample_data(phylo_decontam_rar), "matrix")
+phylo_decontam_rar_sd = as.data.frame(phylo_decontam_rar_sd)
+phylo_decontam_rar_rich_df <- cbind(phylo_decontam_rar_rich, phylo_decontam_rar_even, phylo_decontam_rar_sd)
+
+# make a histogram to look at the shape of the data (bell curve? skew?). You can save this graph for your own benefit if you want.
+hist(phylo_decontam_rar_rich_df$Observed)
+
+# Want to know how much skew there is? Measure Kurtosis (a.k.a. tailedness). You can save this graph for your own benefit if you want.
+# install.packages("PerformanceAnalytics")
+# library(PerformanceAnalytics)
+kurtosis(phylo_decontam_rar_rich_df$Observed)
+# my value output is 1.335, looking for whether +/- and if a large/small number
+
+
+head(phylo_decontam_rar_rich_df)
+
+#check the distribution of your data, which will change your approach
+shapiro.test(phylo_decontam_rar_rich_df$Shannon)
+# W = 0.96103, p-value = 0.02104: my Shannon diversity metric is not normal. : p-value > 0.05 would show that the distribution of the data are not significantly different from normal distribution
+
+shapiro.test(phylo_decontam_rar_rich_df$Observed)
+# W = 0.86331, p-value = 9.1e-07, my observed data are normal. : p-value > 0.05 would show that the distribution of the data are not significantly different from normal distribution
+
+shapiro.test(phylo_decontam_rar_rich_df$phylo_decontam_rar_even)
+# W = 0.96621, p-value = 0.04258, normally distributed. : p-value > 0.05 would show that the distribution of the data are not significantly different from normal distribution
+
+## If your alpha diversity is not normally distributed (non-parametric) -----------------
+### Kruskal-Wallis Test -----
+# K-W is the non-parametric version of ANOVA: http://www.sthda.com/english/wiki/kruskal-wallis-test-in-r
+kruskal.test(Observed ~ Group, data = phylo_decontam_rar_rich_df)
+# data:  Observed by Diet
+# Kruskal-Wallis chi-squared = 10.823, df = 1, p-value = 0.001002
+
+
+# Follow it up with a Conover Test if you have multiple comparisons. Note, code changed recently
+# https://rdrr.io/cran/DescTools/man/ConoverTest.html 
+
+
+conover.test(phylo_decontam_rar_rich_df$Observed, phylo_decontam_rar_rich_df$Group,
+             method = c("holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none")) # method of correction, OK to pick just one
+
+# output will look like this:
+# Kruskal-Wallis rank sum test
+# data: x and group
+# Kruskal-Wallis chi-squared = 10.823, df = 1, p-value = 0
+# 
+# 
+# Comparison of x by group                            
+# (No adjustment)                                
+# Col Mean-|
+#   Row Mean |   Antibiot
+# ---------+-----------
+#   No antib |   3.536360
+# |    0.0004*
+#   
+#   alpha = 0.05
+# Reject Ho if p <= alpha/2
+
+### Linear model for numeric factors -----
+# Interpret linear model in R https://feliperego.github.io/blog/2015/10/23/Interpreting-Model-Output-In-R 
+# https://www.datanovia.com/en/lessons/repeated-measures-anova-in-r/#two-way-repeated-measures-anova
+# https://boostedml.com/2019/06/linear-regression-in-r-interpreting-summarylm.html 
+
+
+
+# you might run each factor separately to find out if they are significant on their own. 
+
+numeric_columns <- c("Age", "Birth_weight", "Gestational_age", "House_surface", "Breastfeeding_time", "Pneumococcal_load", "Fever_time_before_sampling", "C_reactive_protein" , "Hemoglobin", "Leukocytes", "Hospitalization_days" )
+df <- phylo_decontam_rar_rich_df
+df[,numeric_columns] <- sapply(df[numeric_columns],as.numeric)
+sapply(df, class)
+
+summary(lm(Observed ~ ., data = df[, numeric_columns])) #CHANGE ME to update factor names or the alpha diversity metric you want
+summary(glm(Observed ~ ., data = df[, numeric_columns])) #CHANGE ME to update factor names or the alpha diversity metric you want
+
+
+# you might run each factor separately on just a subset of the data.
+summary(lm(Observed ~ as.numeric(PHOS), data=subset(EX_ps_clean.rar.rich.df, Week=="2"))) #CHANGE ME to update factor names or the alpha diversity metric you want
+
+# what if you want to add log transformation to a numerical variable in your metadata? Check out the syntax here: https://rpubs.com/marvinlemos/log-transformation
+
+
+### Linear mixed effects models for complicated experimental designs -----
+# If you have more complicated experimental designs, you might need lmer or glmer models to accommodate that
+# does not have a normal distribution, so compare means using glmer and poisson distribution (number of events within a time interval): https://towardsdatascience.com/the-poisson-distribution-and-poisson-process-explained-4e2cb17d459
+
+lm <- (glmer(Observed ~ A + C + (1|Year_collected), family=poisson, data=EX_ps_clean.rar.rich.df))
+
+summary(lm)
+# paste the output here
+
+
+# if you have multiple groups, this will give you the pairwise comparisons
+emmeans(lm,pairwise ~ A) 
+# paste the output here
+
+emmeans(lm,pairwise ~ B) 
+# paste the output here
+
+

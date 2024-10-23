@@ -40,6 +40,8 @@ install_necessary <- function() {
   install_github("labbcb/Rqc")
   
   install.packages("readxl")
+  install.packages("conover.test")
+
   
 }
 
@@ -91,4 +93,7 @@ load_libraries <- function() {
   library(remotes)
   library(PerformanceAnalytics)
   library(readxl)
+  library(conover.test)
 }
+
+

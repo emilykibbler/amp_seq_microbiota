@@ -188,6 +188,7 @@ ggarrange(plotlist = list(plot4, plot5, plot6),
           ncol = 3)
 ggsave("shannon_richness.png")
 
+
 plot7 <- plot_richness(phylo_rar, 
               x = "Group", #CHANGE ME, A is whatever factor you want on x-axis
               measures = c("Observed", "Shannon"), #CHANGE ME, whatever richness you want. = c("Observed","Shannon")
@@ -234,3 +235,80 @@ ggarrange(plotlist = list(plot7, plot8, plot9),
           ncol = 1)
 
 ggsave("shannon_and_observed.png")
+
+## Richness with significance ---------------
+
+
+
+
+
+# richness plot observed SVs with lines to fit the view screen
+plot_richness(phylo_rar, 
+              x = "Group", #CHANGE ME, A is whatever factor you want on x-axis
+              measures = c("Observed", "Shannon"), #CHANGE ME, whatever richness you want. = c("Observed","Shannon")
+              title = NULL) + 
+  theme_set(theme_minimal(base_size = 14)) + 
+  # geom_violin(trim = TRUE, aes(fill = Diet)) + #optional. CHANGE ME, A is whatever factor to color violins
+  geom_boxplot(width = 0.1, aes(group = "Group")) + #optional. CHANGE ME, A is whatever factor to group boxplots
+  # theme(legend.position = "none") + #use to get rid of your legend
+  ylab("Observed Bacterial Richness (SVs)") + 
+  ylim(0,1500) + #define the y axis min/max
+  # geom_segment(aes(x = 1, y = 1200, xend = 2, yend = 1200)) +  
+  geom_text(x = 1.5, y = 1250, label = "***") # add a drawn in line and significance tag, adjusting the x and y coordinates till it fits where you want in the window.  Add another for each line to add. As written, this will fit the view window you have, if you adjust that your segments will not adjust with it.
+
+phylo_decontam_rar <- readRDS("phylo_decontam_rar.rds")
+phylo_decontam_no_strep_rar <- readRDS("phylo_decontam_no_strep_rar.rds")
+phylo_decontam_strep_rar <- readRDS("phylo_decontam_strep_rar.rds")
+
+
+plot10 <- plot_richness(phylo_decontam_rar, 
+                       x = "Group", #CHANGE ME, A is whatever factor you want on x-axis
+                       measures = c("Observed", "Shannon"), #CHANGE ME, whatever richness you want. = c("Observed","Shannon")
+                       title = NULL) + 
+  theme_set(theme_minimal(base_size = 14)) +
+  geom_violin(trim = TRUE, aes(fill = Group)) + #optional. CHANGE ME, A is whatever factor to color violins
+  geom_boxplot(width = 0.1, aes(group = Group)) + #optional. CHANGE ME, A is whatever factor to group boxplots
+  theme(legend.position = "none") + #use to get rid of your legend
+  # theme(axis.text.x = element_text(angle = 25, hjust = 1, size = 6),
+  theme(axis.title.x = element_blank(),
+        plot.title = element_text(size = 14)) +
+  ylab("Bacterial Richness") +
+  ggtitle("All taxa")
+
+plot11 <- plot_richness(phylo_decontam_no_strep_rar,
+                       x = "Group", #CHANGE ME, A is whatever factor you want on x-axis
+                       measures = c("Observed", "Shannon"), #CHANGE ME, whatever richness you want. = c("Observed","Shannon")
+                       title = NULL) +
+  theme_set(theme_minimal(base_size = 14)) +
+  geom_violin(trim = TRUE, aes(fill = Group)) + #optional. CHANGE ME, A is whatever factor to color violins
+  geom_boxplot(width = 0.1, aes(group = Group)) + #optional. CHANGE ME, A is whatever factor to group boxplots
+  theme(legend.position = "none") + #use to get rid of your legend
+  # theme(axis.text.x = element_text(angle = 25, hjust = 1, size = 6),
+  theme(axis.title.x = element_blank(),
+        plot.title = element_text(size = 14)) +
+  ylab("Bacterial Richness") +
+  ggtitle("No Streptococcaceae")
+
+plot12 <- plot_richness(phylo_decontam_strep_rar,
+                       x = "Group", #CHANGE ME, A is whatever factor you want on x-axis
+                       measures = c("Observed", "Shannon"), #CHANGE ME, whatever richness you want. = c("Observed","Shannon")
+                       title = NULL) +
+  theme_set(theme_minimal(base_size = 14)) +
+  geom_violin(trim = TRUE, aes(fill = Group)) + #optional. CHANGE ME, A is whatever factor to color violins
+  geom_boxplot(width = 0.1, aes(group = Group)) + #optional. CHANGE ME, A is whatever factor to group boxplots
+  theme(legend.position = "none") + #use to get rid of your legend
+  # theme(axis.text.x = element_text(angle = 25, hjust = 1, size = 6),
+  theme(axis.title.x = element_blank(),
+        plot.title = element_text(size = 14)) +
+  ylab("Bacterial Richness") +
+  ggtitle("Only Streptococcaceae")
+
+
+combo <- ggarrange(plotlist = list(plot10, plot11, plot12),
+          labels = c("A", "B", "C"),
+          nrow = 3,
+          ncol = 1)
+
+annotate_figure(combo, top = text_grob("Decontam method alpha diversity plots", size = 16))
+
+ggsave("decontam_shannon_and_observed.png")
