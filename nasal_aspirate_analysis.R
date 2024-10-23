@@ -312,14 +312,13 @@ phylo_ord <- ordinate(phylo, #calculate similarities
                       method = "PCoA", #ordination type
                       "jaccard", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted)
 
-
+# If all the negatives are eliminated by filter and trim:
 phylo_ord <- ordinate(prune_samples(sample_sums(phylo) > 0, phylo), #calculate similarities
                       method = "PCoA", #ordination type
                       "jaccard", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted)
 
 
-
-plot_ordination(phylo, phylo_ord, type = "samples", shape = "Sample_type", color = "Syndrome") +
+plot_ordination(phylo, phylo_ord, type = "samples", color = "Group") +
   ggtitle("Ordination plot, pre-clean")
 ggsave("ordination_before_plot.png") # save this graph for later
 
@@ -356,8 +355,8 @@ clean_ord <- ordinate(clean_data, #calculate similarities
                       "jaccard", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted)
 
 plot_ordination(clean_data, clean_ord, 
-                type = "samples", color = "Syndrome", 
-                title = "Ordination plot, after clean")
+                type = "samples", color = "Group", 
+                title = "Ordination plot, after Ishaq clean")
 ggsave("after_clean_ordination_plot.png") # save this graph for later
 
 median(rowSums(clean_data@otu_table))
@@ -375,7 +374,12 @@ comparison[nrow(comparison) + 1, ] <- c("Total SVs before clean after clean", 49
 # CHANGE ME: Did you notice clustering by batch before and after removing contaminants?
 
 
+## ------ Decontam method -------------
+ # Analysis branched off, see nasal_decontam_method.R
 
+### Summary of decontamination ----
+# CHANGE ME: Which types of negative controls did you use and why? 
+# CHANGE ME: Did you notice clustering by batch before and after removing contaminants?
 
 
 
