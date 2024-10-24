@@ -41,6 +41,9 @@ install_necessary <- function() {
   
   install.packages("readxl")
   install.packages("conover.test")
+  
+  install.packages("asbio")
+  install.packages("microbiome")
 
   
 }
@@ -59,16 +62,6 @@ install_optional <- function() {
   remotes::install_github("twbattaglia/btools")
 }
 
-lab2_libraries <- function() {
-  library(tidyverse)
-  library(devtools)
-  library(Rqc)
-  library(BiocParallel)
-  library(Rqc)
-  library(Biostrings)
-  library(dada2); packageVersion('dada2')
-  library(beepr)
-}
 
 load_libraries <- function() {
   
@@ -94,6 +87,8 @@ load_libraries <- function() {
   library(PerformanceAnalytics)
   library(readxl)
   library(conover.test)
+  library(asbio)
+  library(microbiome)
 }
 
 

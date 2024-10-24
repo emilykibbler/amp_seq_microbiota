@@ -492,7 +492,7 @@ saveRDS(phylo_decontam_with_species, "phylo_decontam_with_species.rds")
 # FIXME
 
 
-# Rarefaction (Lab 7_A) --------------------------------------------------
+# Lab 7: Rarefaction (Lab 7_A) --------------------------------------------------
 # To compare sequence data accurately, it is often necessary to rarefy/normalize SVs to even depth across all samples
 # Rarefaction is not subject to library effect sizes, and reportedly works best (compared to logUQ, CSS, DESeqVS, edgeR-TMM): https://microbiomejournal.biomedcentral.com/articles/10.1186/s40168-017-0237-y
 
@@ -627,7 +627,7 @@ alpha_diversity_table = as.table(table(phylo_rar_rich_df$Group, phylo_rar_rich_d
 alpha_diversity_table
 
 
------------
+# -----------
   # Write out your research questions, make them specific. 
   # Write a description of your experimental design, including notes about replication, repeated measures, nested design, or other factors which might impact your statistical models.
   
@@ -648,45 +648,18 @@ phylo_decontam_rar_rich <- estimate_richness(phylo_decontam_rar, measures = c("O
 # EX_faith <- estimate_pd(EX_ps_clean.rar)
 
 # OPTIONAL measure evenness for each SV individually
-library(asbio)
-library(microbiome)
+
 phylo_decontam_rar_even_SV <- evenness(otu_table(phylo_decontam_rar, taxa_are_rows = FALSE))
-
-# measure evenness for each sample
-phylo_decontam_rar_even <- phylo_decontam_rar_rich$Shannon/log(phylo_decontam_rar_rich$Observed)
+  
 
 
-# Coerce to data.frame and add the metadata for these samples
-phylo_decontam_rar_sd = as(sample_data(phylo_decontam_rar), "matrix")
-phylo_decontam_rar_sd = as.data.frame(phylo_decontam_rar_sd)
-phylo_decontam_rar_rich_df <- cbind(phylo_decontam_rar_rich, phylo_decontam_rar_even, phylo_decontam_rar_sd)
+test_phylo_decontam_rar_rich <- normal_stats(phylo_decontam_rar_rich, phylo_decontam_rar)
+# saveRDS("phylo_decontam_rar_rich")
 
-# make a histogram to look at the shape of the data (bell curve? skew?). You can save this graph for your own benefit if you want.
-hist(phylo_decontam_rar_rich_df$Observed)
-
-# Want to know how much skew there is? Measure Kurtosis (a.k.a. tailedness). You can save this graph for your own benefit if you want.
-# install.packages("PerformanceAnalytics")
-# library(PerformanceAnalytics)
-kurtosis(phylo_decontam_rar_rich_df$Observed)
-# my value output is 1.335, looking for whether +/- and if a large/small number
-
-
-head(phylo_decontam_rar_rich_df)
-
-#check the distribution of your data, which will change your approach
-shapiro.test(phylo_decontam_rar_rich_df$Shannon)
-# W = 0.96103, p-value = 0.02104: my Shannon diversity metric is not normal. : p-value > 0.05 would show that the distribution of the data are not significantly different from normal distribution
-
-shapiro.test(phylo_decontam_rar_rich_df$Observed)
-# W = 0.86331, p-value = 9.1e-07, my observed data are normal. : p-value > 0.05 would show that the distribution of the data are not significantly different from normal distribution
-
-shapiro.test(phylo_decontam_rar_rich_df$phylo_decontam_rar_even)
-# W = 0.96621, p-value = 0.04258, normally distributed. : p-value > 0.05 would show that the distribution of the data are not significantly different from normal distribution
-
-## If your alpha diversity is not normally distributed (non-parametric) -----------------
+ ## If your alpha diversity is not normally distributed (non-parametric) -----------------
 ### Kruskal-Wallis Test -----
 # K-W is the non-parametric version of ANOVA: http://www.sthda.com/english/wiki/kruskal-wallis-test-in-r
-kruskal.test(Observed ~ Group, data = phylo_decontam_rar_rich_df)
+kruskal.test(Observed ~ Group, data = phylo_decontam_rar_rich)
 # data:  Observed by Diet
 # Kruskal-Wallis chi-squared = 10.823, df = 1, p-value = 0.001002
 
@@ -695,7 +668,7 @@ kruskal.test(Observed ~ Group, data = phylo_decontam_rar_rich_df)
 # https://rdrr.io/cran/DescTools/man/ConoverTest.html 
 
 
-conover.test(phylo_decontam_rar_rich_df$Observed, phylo_decontam_rar_rich_df$Group,
+conover.test(phylo_decontam_rar_rich$Observed, phylo_decontam_rar_rich$Group,
              method = c("holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none")) # method of correction, OK to pick just one
 
 # output will look like this:
@@ -725,16 +698,16 @@ conover.test(phylo_decontam_rar_rich_df$Observed, phylo_decontam_rar_rich_df$Gro
 # you might run each factor separately to find out if they are significant on their own. 
 
 numeric_columns <- c("Age", "Birth_weight", "Gestational_age", "House_surface", "Breastfeeding_time", "Pneumococcal_load", "Fever_time_before_sampling", "C_reactive_protein" , "Hemoglobin", "Leukocytes", "Hospitalization_days" )
-df <- phylo_decontam_rar_rich_df
+df <- phylo_decontam_rar_rich
 df[,numeric_columns] <- sapply(df[numeric_columns],as.numeric)
 sapply(df, class)
+numeric_columns <- colnames(df)[which(as.data.frame(sapply(df, class))[,1] == "numeric")]
 
-summary(lm(Observed ~ ., data = df[, numeric_columns])) #CHANGE ME to update factor names or the alpha diversity metric you want
-summary(glm(Observed ~ ., data = df[, numeric_columns])) #CHANGE ME to update factor names or the alpha diversity metric you want
-
-
-# you might run each factor separately on just a subset of the data.
-summary(lm(Observed ~ as.numeric(PHOS), data=subset(EX_ps_clean.rar.rich.df, Week=="2"))) #CHANGE ME to update factor names or the alpha diversity metric you want
+summary(lm(Observed ~ ., data = df[, numeric_columns])) 
+df_ab <- subset(df, Group == "Antibiotics")
+summary(lm(Observed ~ ., data = df_ab[, numeric_columns])) 
+df_no_ab <- subset(df, Group == "No antibiotics")
+summary(lm(Observed ~ ., data = df_no_ab[, numeric_columns])) 
 
 # what if you want to add log transformation to a numerical variable in your metadata? Check out the syntax here: https://rpubs.com/marvinlemos/log-transformation
 
@@ -743,14 +716,15 @@ summary(lm(Observed ~ as.numeric(PHOS), data=subset(EX_ps_clean.rar.rich.df, Wee
 # If you have more complicated experimental designs, you might need lmer or glmer models to accommodate that
 # does not have a normal distribution, so compare means using glmer and poisson distribution (number of events within a time interval): https://towardsdatascience.com/the-poisson-distribution-and-poisson-process-explained-4e2cb17d459
 
-lm <- (glmer(Observed ~ A + C + (1|Year_collected), family=poisson, data=EX_ps_clean.rar.rich.df))
-
-summary(lm)
+# lm <- (glmer(Observed ~ A + C + (1|Year_collected), family=poisson, data=EX_ps_clean.rar.rich.df))
+# 
+# summary(lm)
 # paste the output here
 
 
 # if you have multiple groups, this will give you the pairwise comparisons
-emmeans(lm,pairwise ~ A) 
+model <- lm(Observed ~ ., data = df[, numeric_columns])
+emmeans(model, pairwise ~ Age) 
 # paste the output here
 
 emmeans(lm,pairwise ~ B) 
