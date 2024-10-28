@@ -312,3 +312,93 @@ combo <- ggarrange(plotlist = list(plot10, plot11, plot12),
 annotate_figure(combo, top = text_grob("Decontam method alpha diversity plots", size = 16))
 
 ggsave("decontam_shannon_and_observed.png")
+
+phylo_decontam_rar <- readRDS("phylo_decontam_rar")
+
+top_300 <- prune_taxa(names(sort(taxa_sums(phylo_decontam_rar),TRUE)[1:300]), phylo_decontam_rar)
+
+p <- plot_heatmap(top_300)
+#FIXME there is a theme issue that is causing me to not be able to remove y axis labels
+  # plot_heatmap(top_300) +
+  #   theme(axis.y.text = element_blank())
+
+
+atb_300 <- subset_samples(top_300, Group == "Antibiotics") # CHANGE ME to the column name that holds the variables associated with being a negative control
+atb_p <- plot_heatmap(atb_300)
+no_atb_300 <- subset_samples(top_300, Group == "No antibiotics")
+no_atb_p <- plot_heatmap(no_atb_300)
+ggarrange(plotlist = list(p, atb_p, no_atb_p),
+          labels = c("All", "Antibiotics", "No antibiotics"),
+          vjust = -0.5,
+          ncol = 3,
+          nrow = 1,
+          align = "hv",
+          common.legend = TRUE)
+ggsave("heatmaps_top300_by_group.png")
+
+## dirty and clean taxa analysis
+phylo_dirty_with_species <- readRDS("phylo_dirty_with_species.rds")
+
+df_dirty <- as.data.frame(phylo_dirty_with_species@tax_table)
+table(df_dirty$Kingdom)
+table(df_dirty$Phylum)
+table(df_dirty$Class)
+table(df_dirty$Order)
+table(df_dirty$Family)
+
+Ishaq_clean <- readRDS("Ishaq_phylo_clean_with_species.rds")
+df_clean <- as.data.frame(Ishaq_clean@tax_table)
+
+decontam_with_species <- readRDS("phylo_decontam_with_species.rds")
+df_decontam <- as.data.frame(decontam_with_species@tax_table)
+
+# from the internet
+set.seed(20190708)
+genes <- paste("gene",1:1000,sep="")
+x <- list(
+  A = sample(genes,300), 
+  B = sample(genes,525), 
+  C = sample(genes,440),
+  D = sample(genes,350)
+)
+ggVennDiagram(x)
+
+# kingdoms <- list(
+#   dirty = df_dirty$Kingdom,
+#   Ishaq_clean = df_clean$Kingdom,
+#   decontam = df_decontam$Kingdom
+# )
+# ggVennDiagram(kingdoms) +
+#   ggtitle("kingdoms")
+
+classifications <- colnames(df_dirty)
+
+for (i in 1:length(classifications)) {
+   temp <- list(
+     Dirty = df_dirty[,i],
+     Ishaq_clean = df_clean[,i],
+     Decontam = df_decontam[,i])
+   p <- ggVennDiagram(temp) +
+     ggtitle(classifications[i])
+   print(p)
+   ggsave(paste0(classifications[i], "_venn_diagram.png"), plot = p)
+ }
+
+plot_list <- list()
+
+for (i in 1:length(classifications)) {
+  temp <- list(
+    Dirty = df_dirty[,i],
+    Ishaq_clean = df_clean[,i],
+    Decontam = df_decontam[,i])
+  p <- ggVennDiagram(temp) +
+    ggtitle(classifications[i])
+  print(p)
+  # ggsave(paste0(classifications[i], "_venn_diagram.png"), p)
+}
+
+# combo <- ggarrange(plotlist = list(plot10, plot11, plot12),
+#                    labels = c("A", "B", "C"),
+#                    nrow = 3,
+#                    ncol = 1)
+

@@ -627,8 +627,8 @@ alpha_diversity_table = as.table(table(phylo_rar_rich_df$Group, phylo_rar_rich_d
 alpha_diversity_table
 
 
-# -----------
-  # Write out your research questions, make them specific. 
+
+###  # Write out your research questions, make them specific. --------
   # Write a description of your experimental design, including notes about replication, repeated measures, nested design, or other factors which might impact your statistical models.
   
   
@@ -642,25 +642,28 @@ alpha_diversity_table
 
 # use phyloseq to measure alpha diversity
 
-phylo_decontam_rar_rich <- estimate_richness(phylo_decontam_rar, measures = c("Observed", "Shannon")) #change to whatever measures you want
+# phylo_decontam_rar_rich <- estimate_richness(phylo_decontam_rar, measures = c("Observed", "Shannon")) #change to whatever measures you want
 
 # use phyloseq to calculate Faith's Diversity metric (optional), https://rdrr.io/github/twbattaglia/btools/man/estimate_pd.html
 # EX_faith <- estimate_pd(EX_ps_clean.rar)
 
 # OPTIONAL measure evenness for each SV individually
+  phylo_decontam_rar_even_SV <- evenness(otu_table(phylo_decontam_rar, taxa_are_rows = FALSE))
 
-phylo_decontam_rar_even_SV <- evenness(otu_table(phylo_decontam_rar, taxa_are_rows = FALSE))
-  
+phylo_decontam_rar_rich_df <- normal_stats(phylo_decontam_rar)
+# Outputs:
+  # Kurtosis: 1.334661
+  # Shannon shapiro: W = 0.96103, p-value = 0.02104
+  # Observed shapiro: W = 0.86331, p-value = 9.1e-07
+  # Even shapiro: W = 0.96621, p-value = 0.04258
 
-
-test_phylo_decontam_rar_rich <- normal_stats(phylo_decontam_rar_rich, phylo_decontam_rar)
-# saveRDS("phylo_decontam_rar_rich")
+saveRDS(phylo_decontam_rar_rich_df, "phylo_decontam_rar_rich_df.rds")
 
  ## If your alpha diversity is not normally distributed (non-parametric) -----------------
 ### Kruskal-Wallis Test -----
 # K-W is the non-parametric version of ANOVA: http://www.sthda.com/english/wiki/kruskal-wallis-test-in-r
-kruskal.test(Observed ~ Group, data = phylo_decontam_rar_rich)
-# data:  Observed by Diet
+kruskal.test(Observed ~ Group, data = phylo_decontam_rar_rich_df)
+# data:  Observed by Group
 # Kruskal-Wallis chi-squared = 10.823, df = 1, p-value = 0.001002
 
 
@@ -668,25 +671,24 @@ kruskal.test(Observed ~ Group, data = phylo_decontam_rar_rich)
 # https://rdrr.io/cran/DescTools/man/ConoverTest.html 
 
 
-conover.test(phylo_decontam_rar_rich$Observed, phylo_decontam_rar_rich$Group,
+conover.test(phylo_decontam_rar_rich_df$Observed, phylo_decontam_rar_rich_df$Group,
              method = c("holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none")) # method of correction, OK to pick just one
-
-# output will look like this:
-# Kruskal-Wallis rank sum test
-# data: x and group
-# Kruskal-Wallis chi-squared = 10.823, df = 1, p-value = 0
-# 
-# 
-# Comparison of x by group                            
-# (No adjustment)                                
-# Col Mean-|
-#   Row Mean |   Antibiot
-# ---------+-----------
-#   No antib |   3.536360
-# |    0.0004*
-#   
-#   alpha = 0.05
-# Reject Ho if p <= alpha/2
+# Output:
+    # Kruskal-Wallis rank sum test
+    # data: x and group
+    # Kruskal-Wallis chi-squared = 10.823, df = 1, p-value = 0
+    # 
+    # 
+    # Comparison of x by group                            
+    # (No adjustment)                                
+    # Col Mean-|
+    #   Row Mean |   Antibiot
+    #            +
+    #   No antib |   3.536360
+    # |    0.0004*
+    #   
+    #   alpha = 0.05
+    # Reject Ho if p <= alpha/2
 
 ### Linear model for numeric factors -----
 # Interpret linear model in R https://feliperego.github.io/blog/2015/10/23/Interpreting-Model-Output-In-R 
@@ -698,7 +700,7 @@ conover.test(phylo_decontam_rar_rich$Observed, phylo_decontam_rar_rich$Group,
 # you might run each factor separately to find out if they are significant on their own. 
 
 numeric_columns <- c("Age", "Birth_weight", "Gestational_age", "House_surface", "Breastfeeding_time", "Pneumococcal_load", "Fever_time_before_sampling", "C_reactive_protein" , "Hemoglobin", "Leukocytes", "Hospitalization_days" )
-df <- phylo_decontam_rar_rich
+df <- phylo_decontam_rar_rich_df
 df[,numeric_columns] <- sapply(df[numeric_columns],as.numeric)
 sapply(df, class)
 numeric_columns <- colnames(df)[which(as.data.frame(sapply(df, class))[,1] == "numeric")]
@@ -723,11 +725,18 @@ summary(lm(Observed ~ ., data = df_no_ab[, numeric_columns]))
 
 
 # if you have multiple groups, this will give you the pairwise comparisons
-model <- lm(Observed ~ ., data = df[, numeric_columns])
-emmeans(model, pairwise ~ Age) 
+model <- lm(Observed ~ ., data = df[, c("Group", numeric_columns)])
+emmeans(model, pairwise ~ Group) 
 # paste the output here
-
-emmeans(lm,pairwise ~ B) 
-# paste the output here
-
+  
+  # emmeans
+  # Group          emmean   SE df lower.CL upper.CL
+  # Antibiotics      48.4 2.13 44     44.1     52.7
+  # No antibiotics   51.6 3.30 44     44.9     58.2
+  # 
+  # Confidence level used: 0.95 
+  # 
+  # $contrasts
+  # contrast                     estimate   SE df t.ratio p.value
+  # Antibiotics - No antibiotics    -3.16 4.22 44  -0.749  0.4578
 

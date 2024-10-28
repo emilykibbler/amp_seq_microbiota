@@ -60,6 +60,8 @@ install_optional <- function() {
   install.packages("ggtext")
   install.packages("remotes")
   remotes::install_github("twbattaglia/btools")
+  if (!require(devtools)) install.packages("devtools")
+  devtools::install_github("gaospecial/ggVennDiagram")
 }
 
 
@@ -89,6 +91,7 @@ load_libraries <- function() {
   library(conover.test)
   library(asbio)
   library(microbiome)
+  library(ggVennDiagram)
 }
 
 
