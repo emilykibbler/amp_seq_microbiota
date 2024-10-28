@@ -7,21 +7,15 @@ print_norm_check <- function(input_test){
   }
 }
 
-normal_stats <- function(df, ps) {
+normal_stats <- function(ps) {
   # Error checks
-  if (class(df) != "data.frame") {
-    print("This function needs a data frame. Your data is:")
-    print(class(df))
-  }
   if (class(ps) != "phyloseq") {
     print("Second argument should be a phyloseq object")
     print("Probably one that ends in something like _clean_rar")
   }
-  if (is.na(sum((match(colnames(df), c("Observed", "Shannon")))))) {
-    print("I set up this function to expect Observed and Shannon diversity to be calculated")
-    print("Go back and put that in the df that is your first argument")
-  }
-  
+  print("Reminder:")
+  print("I made this function to evaluate Observed and Shannon metrics")
+  df <- estimate_richness(ps, measures = c("Observed", "Shannon")) 
   # # measure evenness for each sample
   even <- df$Shannon/log(df$Observed)
   rar_sd = as(sample_data(ps), "matrix")
@@ -33,7 +27,7 @@ normal_stats <- function(df, ps) {
   # Kurtosis
   print("Kurtosis value is:")
   print(kurtosis(result_df$Observed))
-  print("Red flag is absolute value >2; orange flag >1")
+  print("Red flag for kurtosis is absolute value >2; orange flag >1")
   print("Positive or negative value indicates direction of tail")
   # Shapiro - Shannon
   shan_shap <- shapiro.test(result_df$Shannon)
