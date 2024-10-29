@@ -27,6 +27,11 @@ create_and_plot_error_profile <- function(info, bases = 1e6) {
 
       
 make_SV_summary <- function(seqtab_input) {
+  if (class(seqtab_input) != "data.frame") {
+    # print("Data frame is the expected input")
+    # print(paste("Your input is:", class(seqtab_input)))
+    stop(paste("Data frame is the expected input.", "\n", "Your input is:", class(seqtab_input)))
+  }
   summary <- data.frame(matrix(ncol = 2, nrow = 0)) # empty df to dump row-wise data into
   colnames(summary) <- c("sample", "SVs")
   for (i in 1:nrow(seqtab_input)) {

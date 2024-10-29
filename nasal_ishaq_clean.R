@@ -75,7 +75,7 @@ comparison[nrow(comparison) + 1, ] <- c("Median reads per exp_samp after clean",
 comparison[nrow(comparison) + 1, ] <- c("Minimum reads per exp_samp after clean", 287, NA)
 
 comparison[nrow(comparison) + 1, ] <- c("Total SVs before clean", 5144, NA)
-comparison[nrow(comparison) + 1, ] <- c("Total SVs before clean after clean", 4952, NA)
+comparison[nrow(comparison) + 1, ] <- c("Total SVs after clean", 4952, NA)
 
 
 ### Summary of decontamination ----

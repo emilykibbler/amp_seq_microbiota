@@ -4,3 +4,17 @@
 .Ruserdata
 c_diff_acc_numbers.txt
 c_diff_test.fas
+c_diff_test_out.fasta
+config
+fasta_formatting.R
+DADA2_Ishaq_amplicons_walkthru.R
+crypto_data
+misc_notes.R
+nasal
+scallop_data
+tests
+lamb_data
+c_diff_test_out.fas
+cow_acidosis_rumen_data
+DADA2_paper
+lamb_200_trim

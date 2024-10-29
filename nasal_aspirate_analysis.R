@@ -86,11 +86,11 @@ View(filtoutput)
 # I retained 6210016 reads
 comparison[nrow(comparison) + 1, ] <- c("Total filtered reads", 6210016, 4150123)
 median(as.data.frame(filtoutput)$reads.out[1:76])
+summary(as.data.frame(filtoutput)$reads.out[1:76])
 comparison[nrow(comparison) + 1, ] <- c("Median exp_samp filtered reads", 72591, NA)
 comparison[nrow(comparison) + 1, ] <- c("Minimum exp_samp filtered reads", 12559, NA)
 
-## Lab 3---------------------------
-  # DADA2 learn error rates (Lab 3) ----------------------------
+## Lab 3: DADA2 learn error rates (Lab 3) ----------------------------
 
 # source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab3_functions.R")
 
@@ -124,7 +124,8 @@ rowSums(seqtab)
 saveRDS(seqtab, "seqtab.rds")
 seqtab <- readRDS("seqtab.rds")
 
-SVs_found_by_sample <- make_SV_summary(seqtab)
+SVs_found_by_sample <- make_SV_summary(seqtab) # this function is in lab3_functions
+summary(SVs_found_by_sample$SVs[1:76])
 View(SVs_found_by_sample)
 # Fewest SVs: Neg13_R1_F_filt.fastq.gz -- 1
 # Most SVs: B213_R1_F_filt.fastq.gz -- 532
@@ -138,7 +139,9 @@ comparison[nrow(comparison) + 1, ] <- c("Median ASV per exp_samp", 144.5, 80)
 # multithread processing can be used with mac or linux, and verbose means it will print results to the screen		
 seqtab_nochim <- removeBimeraDenovo(seqtab, method = "consensus", multithread = TRUE, verbose = TRUE) 
 # My samples have Identified 875 bimeras out of 6019 input sequences.
-
+  # View(make_SV_summary(seqtab_nochim))
+  # sum(make_SV_summary(seqtab_nochim)$SVs)
+  # summary(make_SV_summary(seqtab_nochim)$SVs[1:76])
 # 2. Check dimensions of your cleaned sequence table to see how many samples and sequences now remain.
 dim(seqtab_nochim) 
 # 93 samples (row count) and 5144 SVs (column count)
@@ -177,6 +180,11 @@ for (i in 1:nrow(meta)) {
   } else {meta$Sample_type[i] <- "experimental"}
 }
 saveRDS(meta, "meta.rds")
+#### Patient metadata analysis -----
+pts_meta <- subset(meta, Group != "controlneg")
+# single check to make sure I can run this function on categorical data
+cor(as.numeric(as.factor(pts_meta[,"Group"])), as.numeric(as.factor(pts_meta[,"Gender"])), method = "kendall") # crushed it
+numeric_columns <- c("Age", "Birth_weight", "Gestational_age", "House_surface", "Breastfeeding_time", "Pneumococcal_load", "Fever_time_before_sampling", "C_reactive_protein" , "Hemoglobin", "Leukocytes", "Hospitalization_days" )
 
 
 # 2.5 check the dimensions of the three data files you need for this to make sure the number of rows matches in each. If they do not, you may need to add/remove rows from your metadata file in case samples were removed/retained from your dataset.
@@ -420,6 +428,9 @@ comparison[nrow(comparison) + 1, ] <- c("Minimum reads per exp_samp after decont
 
 
 phylo_clean_decontam_decontam <- readRDS("phylo_clean_decontam_decontam.rds")
+summary(rowSums(phylo_clean_decontam_decontam@otu_table)[1:76])
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 6112   43586   66853   70767   92416  200156 
 
 seqtab_nochim_decontam = as(otu_table(phylo_clean_decontam_decontam), "matrix")
 seqtab_nochim_decontam = as.matrix(seqtab_nochim_decontam)
@@ -458,7 +469,7 @@ phylo_clean_decontam_decontam <- readRDS("phylo_clean_decontam_decontam.rds")
 decontam_all_taxa_species <- readRDS('decontam_all_taxa_species.rds')
 
 
-otu_t <- otu_table(phylo_clean_decontam_decontam)
+otu_t <- otu_table(phylo_clean_decontam_decontam, taxa_are_rows = FALSE)
 
 ## create a phyloseq object with all samples
 phylo_decontam_with_species <- phyloseq(otu_table(otu_t, taxa_are_rows = FALSE), 
@@ -467,8 +478,9 @@ phylo_decontam_with_species <- phyloseq(otu_table(otu_t, taxa_are_rows = FALSE),
 
 
 saveRDS(phylo_decontam_with_species, "phylo_decontam_with_species.rds")
-
-
+summary(rowSums(phylo_decontam_with_species@otu_table)[1:76])
+  # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  # 6112   43586   66853   70767   92416  200156 
 
 # Lab 6_B: Clean out unwanted taxa ------------------------------------
 # Regardless of whether you included sequenced negative controls, you can remove taxa which are of no interest to you
@@ -485,9 +497,11 @@ table(df$Class)
 table(df$Order)
 table(df$Family)
 
-phylo_decontam_with_species <- phylo_decontam_with_species %>% # CHANGE ME to your phyloseq object name 
-  subset_taxa(Family != "Mitochondria" & Order != "Chloroplast") # CHANGE ME to taxa you want to remove
-
+phylo_decontam_with_species <- phylo_decontam_with_species %>% 
+  subset_taxa(Family != "Mitochondria" & Order != "Chloroplast")
+summary(rowSums(phylo_decontam_with_species@otu_table)[1:76])
+  # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  # 2922   40793   63951   67733   90951  197735 
 saveRDS(phylo_decontam_with_species, "phylo_decontam_with_species.rds")
 
 # Write out a description of experimental design (Homework)
@@ -503,23 +517,29 @@ saveRDS(phylo_decontam_with_species, "phylo_decontam_with_species.rds")
 # make a rarefaction curve to see if your samples have enough coverage. To make it prettier, check out this tutorial: https://fromthebottomoftheheap.net/2015/04/16/drawing-rarefaction-curves-with-custom-colours/
 #
 
-tab <- otu_table(phylo_decontam_with_species)
-class(tab) <- "matrix" # as.matrix() will do nothing
-## you get a warning here, but this is what we need to have
+tab <- otu_table(phylo_decontam_with_species, taxa_are_rows = FALSE)
+class(tab) <- "matrix" # tab <- as.matrix(tab) will do nothing for some reason
+## you get a warning here, ignore, this is what we need to have
 tab <- t(tab) # transpose observations to rows
-# rare <- rarecurve(tab, step=10000, lwd=2, ylab="OTU",  label=F)
-
 
 r_curve <- rarecurve(tab, step = 10, cex = 0.5, label = FALSE) 
 # optional to save this plot
 
 # take a look at rowsums, or total sequences per sample
 sort(rowSums(otu_table(phylo_decontam_with_species)))
+summary((rowSums(otu_table(phylo_decontam_with_species))[1:76]))
+  # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  # 2922   40793   63951   67733   90951  197735 
 # smallest reads (sequences) in a sample ______ B136 -- 2922 
 # largest in a sample ______ B166 197735
 # number of experimental samples with <5000 ______ 1
 # In the paper they rarified to 12k, I don't understand how I lost so many reads
 
+dim(phylo_decontam_with_species@otu_table)
+# 93, 1884
+summary(make_SV_summary(as.data.frame(phylo_decontam_with_species@otu_table))$SVs[1:76])
+  # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  # 5.00   19.00   39.50   59.76   83.50  265.00 
 
 phylo_decontam_rar <- rarefy_even_depth(phylo_decontam_with_species, 
                                         sample.size = 5000, # CHANGE ME to the sequences/sample you want. 5-10k is a good amount, more is better
@@ -530,17 +550,19 @@ phylo_decontam_rar <- rarefy_even_depth(phylo_decontam_with_species,
 # set.seed(711) was used
 # 17 negative control samples removed and one experimental sample
 # 363 OTUs removed
+phylo_decontam_rar
+# 1521 taxa, 75 samples
 
 
 # this helps with plotting later
 sample_data(phylo_decontam_rar)$Group <- factor(sample_data(phylo_decontam_rar)$Group, 
                                                 levels = c("IPD_ATB", "IPD"), 
-                                                labels = c("Antibiotics", "No antibiotics")) #CHANGE ME
+                                                labels = c("Antibiotics", "No antibiotics")) 
 
 saveRDS(phylo_decontam_rar, "decontam_phylo_rarified.rds")
 
 # Helpful to have an SV table from the clean, rarefied phyloseq
-write.csv(otu_table(phylo_decontam_rar), 'decontam_phylo_rarified.csv')
+write.csv(otu_table(phylo_decontam_rar, taxa_are_rows = FALSE), 'decontam_phylo_rarified.csv')
 
 # Specifying taxa after rarification
 
@@ -637,7 +659,7 @@ alpha_diversity_table
   
   
   
-  # Alpha diversity metrics statistics (Lab 8)--------------
+  # Lab 8: Alpha diversity metrics statistics (Lab 8)--------------
 # Phyloseq can measure and visualize alpha diversity: https://joey711.github.io/phyloseq/plot_richness-examples.html
 # phyloseq doesn't do stats or more complex graphs
 
@@ -834,9 +856,43 @@ corr_calc <- cor(top100_decontam_rar_corr_df[,numeric_columns],
                     use = "complete.obs", # use=Specifies the handling of missing data. Options are all.obs (assumes no missing data - missing data will produce an error), complete.obs (listwise deletion), and pairwise.complete.obs (pairwise deletion)
                     method = "spearman") # correlation method=pearson, spearman, or kendall
 
+### Note, if you have too few samples, you may receive an error about too few observations. 
+# You may ignore the error message, or remove than column
+summary(lm(Observed ~ ., data = top100_decontam_rar_corr_df[, numeric_columns])) 
+# Checking that there are any correlations with p<0.05
 
-### Note, if you have too few samples, you may receive an error about too few observations. You may ignore the error message, or remove than column
+which(rapply(list(sapply(top100_decontam_rar_corr_df[,numeric_columns], sum)), is.na))
+# Problem columns: 
+# Birth_weight, Gestational_age, House_surface, Breastfeeding_time, Fever_time_before_sampling, 
+# C_reactive_protein, Hemoglobin, Leukocytes, Hospitalization_days
+View(top100_decontam_rar_corr_df[,numeric_columns][,which(rapply(list(sapply(top100_decontam_rar_corr_df[,numeric_columns], sum)), is.na))])
+# Take out House_surface, idk seems dumb
+analysis_columns <- numeric_columns[numeric_columns != "House_surface"]
+# 406 missing Breastfeeding. B162 missing Breastfeeding. B167 missing Breastfeeding. 
+# B207 missing Fever, CRP, heme, leuk. B90 missing heme and leuk. B96 missing Hosp
+# B112 missing heme and leuk. B141 missing heme. B79 missing BW, GA, breastfeed
+# B346 missing fever time, 414 missing fever time
+# try taking out these samples
+corr_analysis_df <- top100_decontam_rar_corr_df[, analysis_columns]
+remove_me <- c("406", "B162", "B167", "B207", "B90", "B96", "B112", "B141", "B79", "B346", "414") # we are getting rid of 11 out of 75 samples, not great
+corr_analysis_df <- corr_analysis_df[-which(row.names(top100_decontam_rar_corr_df) %in% remove_me),]
+which(rapply(list(sapply(corr_analysis_df, sum)), is.na))
 
+corr_calc <- cor(corr_analysis_df, 
+                 use = "complete.obs", # use=Specifies the handling of missing data. Options are all.obs (assumes no missing data - missing data will produce an error), complete.obs (listwise deletion), and pairwise.complete.obs (pairwise deletion)
+                 method = "spearman") # correlation method=pearson, spearman, or kendall
+# corr.mtest is a custom function written by Dr. Ishaq, see lab9_functions file
+res1 <- cor.mtest(corr_analysis_df,0.95)
+# Note: if you come up with a warning message, 
+# it means that one or more of your columns generated correlations of value 0, 
+# which makes it angry.  
+# Visualize the plot, and "?" will come up in those columns.  
+# To fix, remove the column or add a data transformation, to the dataframe you created to make this.  
+# Set the corr.mtest function and run corr.mtest again.
+
+# warning message: over 50 warnings saying In cor(x, y) : the standard deviation is zero
+# FIXME until I can resolve these warnings, I don't think corrplot will work
+# res2 <- cor.mtest(EX_ps_clean.rar.corr.df,0.99)
 
 ## plot only those correlations with a significant p-value <0.05, using hierarchical clustering
 corrplot(corr_calc, 
@@ -849,18 +905,31 @@ corrplot(corr_calc,
          tl.col = "black", # text color
          tl.cex = .9, #text size
          col = brewer.pal(n = 10, name = "RdYlBu")) #specify a color palette and number of shades needed
-# Fails, I think because nothing is correlated?
-summary(lm(Observed ~ ., data = top100_decontam_rar_corr_df[, numeric_columns])) 
 
 
-# corr.mtest is a custom function written by Dr. Ishaq, see lab9_functions file
-res1 <- cor.mtest(top100_decontam_rar_corr_df[,numeric_columns],0.95)
-# res2 <- cor.mtest(EX_ps_clean.rar.corr.df,0.99)
-# Note: if you come up with a warning message, 
-# it means that one or more of your columns generated correlations of value 0, 
-# which makes it angry.  
-# Visualize the plot, and "?" will come up in those columns.  
-# To fix, remove the column or add a data transformation, to the dataframe you created to make this.  
-# Set the corr.mtest function and run corr.mtest again.
+
+
+
+
+
+## Barplots------------------
+# can add ggplot components to make it pretty
+#don't recommend using genus here, it make crash R
+
+# see plotting script
+
+
+# example from class
+EX_ps_clean.rar.glom = tax_glom(EX_ps_clean.rar, "Phylum")
+plot_bar(EX_ps_clean.rar.glom, fill="Phylum") +   facet_grid(~Diet, space="free", scales="free") + theme(legend.position = "bottom", axis.text.x = element_blank()) 
+
+
+# make a stacked 100% bar chart in phyloseq
+
+EX_ps_clean.rar.stacked = transform_sample_counts(EX_ps_clean.rar, function(x) x / sum(x) )
+
+plot_bar(EX_ps_clean.rar.stacked, fill="Phylum") 
+
+# to filter by abundance and pool low abundance groups: https://github.com/joey711/phyloseq/issues/901
 
 
