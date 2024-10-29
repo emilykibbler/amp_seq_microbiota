@@ -54,6 +54,11 @@ clean_data <-  clean_phylo_data(phylo, neg_con = "negative")
 clean_data
 # Ends up with 4952/5144 taxa and 76/93 samples maintained
 saveRDS(clean_data, "clean_data.rds")
+# Loosen cutoff
+relaxed_clean_data <- relaxed_clean_phylo_data(phylo, neg_con = "negative", threshold = 5)
+# only added in 2 more taxa, removed 15 out of 17 negative controls
+# probably not worth chasing unless those two taxa are super important for some reason
+summary(rowSums(relaxed_clean_data@otu_table)) # median and min did not change at all
 
 # Did it work? Check your ordination again
 clean_ord <- ordinate(clean_data, #calculate similarities
@@ -65,9 +70,8 @@ plot_ordination(clean_data, clean_ord,
                 title = "Ordination plot, after Ishaq clean")
 ggsave("after_clean_ordination_plot.png") # save this graph for later
 
-median(rowSums(clean_data@otu_table))
-comparison[nrow(comparison) + 1, ] <- c("Median reads per exp_samp after clean", 19226, 47323)
 summary(rowSums(clean_data@otu_table))
+comparison[nrow(comparison) + 1, ] <- c("Median reads per exp_samp after clean", 19226, 47323)
 comparison[nrow(comparison) + 1, ] <- c("Minimum reads per exp_samp after clean", 287, NA)
 
 comparison[nrow(comparison) + 1, ] <- c("Total SVs before clean", 5144, NA)

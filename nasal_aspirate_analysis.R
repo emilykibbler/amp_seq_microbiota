@@ -7,6 +7,8 @@ setwd("/Users/emilykibbler/Desktop/projects/R/AVS_554/nasal")
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab2_functions.R")
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab3_functions.R")
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab5_functions.R")
+source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab7_functions.R")
+source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab9_functions.R")
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/AVS554_packages.R")
 # install_necessary()
 # install_optional()
@@ -348,7 +350,7 @@ BiocManager::install("decontam")
 
 library(decontam) # This packages identify contaminants by frequency of SVs.
 
-#### skipped, no quant data ----------
+# skipped, no quant data 
 # The first contaminant identification method uses the distribution of the frequency of each sequence as a function of the input DNA concentration. Essentially, is it too rare to be real?
 # 
 
@@ -650,7 +652,7 @@ alpha_diversity_table
 # OPTIONAL measure evenness for each SV individually
   phylo_decontam_rar_even_SV <- evenness(otu_table(phylo_decontam_rar, taxa_are_rows = FALSE))
 
-phylo_decontam_rar_rich_df <- normal_stats(phylo_decontam_rar)
+phylo_decontam_rar_rich_df <- normal_stats(phylo_decontam_rar) # see lab8_functions.R
 # Outputs:
   # Kurtosis: 1.334661
   # Shannon shapiro: W = 0.96103, p-value = 0.02104
@@ -700,15 +702,15 @@ conover.test(phylo_decontam_rar_rich_df$Observed, phylo_decontam_rar_rich_df$Gro
 # you might run each factor separately to find out if they are significant on their own. 
 
 numeric_columns <- c("Age", "Birth_weight", "Gestational_age", "House_surface", "Breastfeeding_time", "Pneumococcal_load", "Fever_time_before_sampling", "C_reactive_protein" , "Hemoglobin", "Leukocytes", "Hospitalization_days" )
-df <- phylo_decontam_rar_rich_df
-df[,numeric_columns] <- sapply(df[numeric_columns],as.numeric)
-sapply(df, class)
-numeric_columns <- colnames(df)[which(as.data.frame(sapply(df, class))[,1] == "numeric")]
+phylo_decontam_rar_rich_df <- phylo_decontam_rar_rich_df
+phylo_decontam_rar_rich_df[,numeric_columns] <- sapply(phylo_decontam_rar_rich_df[numeric_columns],as.numeric)
+sapply(phylo_decontam_rar_rich_df, class)
+numeric_columns <- colnames(phylo_decontam_rar_rich_df)[which(as.data.frame(sapply(phylo_decontam_rar_rich_df, class))[,1] == "numeric")]
 
-summary(lm(Observed ~ ., data = df[, numeric_columns])) 
-df_ab <- subset(df, Group == "Antibiotics")
+summary(lm(Observed ~ ., data = phylo_decontam_rar_rich_df[, numeric_columns])) 
+phylo_decontam_rar_rich_df_ab <- subset(phylo_decontam_rar_rich_df, Group == "Antibiotics")
 summary(lm(Observed ~ ., data = df_ab[, numeric_columns])) 
-df_no_ab <- subset(df, Group == "No antibiotics")
+df_no_ab <- subset(phylo_decontam_rar_rich_df, Group == "No antibiotics")
 summary(lm(Observed ~ ., data = df_no_ab[, numeric_columns])) 
 
 # what if you want to add log transformation to a numerical variable in your metadata? Check out the syntax here: https://rpubs.com/marvinlemos/log-transformation
@@ -739,4 +741,126 @@ emmeans(model, pairwise ~ Group)
   # $contrasts
   # contrast                     estimate   SE df t.ratio p.value
   # Antibiotics - No antibiotics    -3.16 4.22 44  -0.749  0.4578
+
+atb_df <- subset(phylo_decontam_rar_rich_df, Group == "Antibiotics")
+no_atb_df <- subset(phylo_decontam_rar_rich_df, Group == "No antibiotics")
+t.test(atb_df$Observed, no_atb_df$Observed) # different
+t.test(atb_df$Shannon, no_atb_df$Shannon) # not significantly different
+
+
+# Lab 9: More ways to graph alpha diversity  -------
+# Resources for visualization
+# https://www.data-to-viz.com/
+# https://r-graph-gallery.com/index.html
+
+## Heatmaps --------------
+# base plot
+plot_heatmap(phylo_decontam_rar)
+# follow the tutorial to make prettier versions in phyloseq: https://joey711.github.io/phyloseq/plot_heatmap-examples.html
+# go to the plot script to see code for a fancier heatmaps
+
+# example from class
+phylo_decontam_rar_glom = tax_glom(phylo_decontam_rar, "Phylum")
+
+
+
+
+#example from class, but looks like trash without a lot of fancying up
+# heatmap(otu_table(EX_ps_clean.rar))
+
+
+## Correlogram --------------
+# This makes a correlation matrix plot: https://cran.r-project.org/web/packages/corrplot/vignettes/corrplot-intro.html
+
+
+
+
+# corrplot requires one dataframe of metadata and/or seqtab data.  Any columns in the dataframe will be correlated against all others.  Too many columns makes the graph unreadable, try to keep it to <50.
+
+# select to top 15 most abundant SVs from your phyloseq object and extract to a dataframe
+#take out top 100 taxa based on abundance
+top100OTUs = names(sort(taxa_sums(phylo_decontam_rar), TRUE)[1:100])
+top100 = prune_taxa(top100OTUs, phylo_decontam_rar)
+
+# combine with your metadata and create one dataframe object. you can include other info that you created for a previous dataframe, as long as those objects are still in your R environment. Reminder, you can only use numeric data in a correlation matrix, so you will have to drop certain columns or make them numeric instead.
+# Coerce to data.frame and add the metadata for these samples
+top100_sd = as(otu_table(top100), "matrix")
+top100_sd = as.data.frame(top100_sd)
+
+# add Genus names in place of the full sequence name that is in the SV columns
+top100_tax <- as.data.frame(tax_table(top100))
+## if the Genus is empty, replace with the Family
+top100_tax$Genus[is.na(top100_tax$Genus)] <- top100_tax$Family[is.na(top100_tax$Genus)]
+colnames(top100_sd) = top100_tax$Genus
+
+# paste all the components together
+top100_decontam_rar_corr_df <- cbind(top100_sd, phylo_decontam_rar_rich, phylo_decontam_rar_even, phylo_decontam_rar_sd)
+
+# check header to make sure it looks good
+head(top100_decontam_rar_corr_df)
+
+# # change any column factor names to make them prettier
+# names(EX_ps_clean.rar.corr.df)[names(EX_ps_clean.rar.corr.df) == "EX_ps_clean.rar.even"] <- "Evenness"
+# 
+# # check header to make sure it looks good
+# head(EX_ps_clean.rar.corr.df)
+# 
+# # for example, drop a column with factorial data
+# EX_ps_clean.rar.corr.df <- subset(EX_ps_clean.rar.corr.df, select = -c(Treatment, Diet, Sheep_ID, ICTERIC_INDEX, LIPEMIC_INDEX))
+
+# check header to make sure it looks good
+head(EX_ps_clean.rar.corr.df)
+
+# check that all remaining columns are numeric instead of factor or character
+str(EX_ps_clean.rar.corr.df)
+
+# clean up any columns which are not registering as numeric
+# EX_ps_clean.rar.corr.df <- sapply(EX_ps_clean.rar.corr.df, as.numeric)
+
+numeric_columns <- c("Age", "Birth_weight", "Gestational_age", "House_surface", "Breastfeeding_time", "Pneumococcal_load", "Fever_time_before_sampling", "C_reactive_protein" , "Hemoglobin", "Leukocytes", "Hospitalization_days" )
+top100_decontam_rar_corr_df[,numeric_columns] <- sapply(top100_decontam_rar_corr_df[numeric_columns],as.numeric)
+sapply(top100_decontam_rar_corr_df, class)
+numeric_columns <- colnames(top100_decontam_rar_corr_df)[which(as.data.frame(sapply(top100_decontam_rar_corr_df, class))[,1] == "numeric")]
+
+
+
+# alternatively, load a premade dataframe containing your chosen SVs from your sequence table (otu)table in phyloseq) and the metadata you want to include
+# EX_ps_clean.rar.corr.df <- read.csv("example_correlogram_dataframe.csv", check.names = FALSE, header=T, row.names=1)
+
+
+
+# run correlations
+corr_calc <- cor(top100_decontam_rar_corr_df[,numeric_columns], 
+                    use = "complete.obs", # use=Specifies the handling of missing data. Options are all.obs (assumes no missing data - missing data will produce an error), complete.obs (listwise deletion), and pairwise.complete.obs (pairwise deletion)
+                    method = "spearman") # correlation method=pearson, spearman, or kendall
+
+
+### Note, if you have too few samples, you may receive an error about too few observations. You may ignore the error message, or remove than column
+
+
+## plot only those correlations with a significant p-value <0.05, using hierarchical clustering
+corrplot(corr_calc, 
+         type = "lower", #shape of the plot itself: full, upper, lower
+         method = "circle", #shape of the data: circle, square, ellipse, number, shade, color, pie 
+         order = "hclust", #how to cluster samples: AOE, hclust, FPC, alphabet, or leave blank
+         p.mat = res1[[1]], #which correlations to use
+         sig.level = 0.05, #sets significance cutoff
+         insig = "blank", #leaves p > 0.05 blank
+         tl.col = "black", # text color
+         tl.cex = .9, #text size
+         col = brewer.pal(n = 10, name = "RdYlBu")) #specify a color palette and number of shades needed
+# Fails, I think because nothing is correlated?
+summary(lm(Observed ~ ., data = top100_decontam_rar_corr_df[, numeric_columns])) 
+
+
+# corr.mtest is a custom function written by Dr. Ishaq, see lab9_functions file
+res1 <- cor.mtest(top100_decontam_rar_corr_df[,numeric_columns],0.95)
+# res2 <- cor.mtest(EX_ps_clean.rar.corr.df,0.99)
+# Note: if you come up with a warning message, 
+# it means that one or more of your columns generated correlations of value 0, 
+# which makes it angry.  
+# Visualize the plot, and "?" will come up in those columns.  
+# To fix, remove the column or add a data transformation, to the dataframe you created to make this.  
+# Set the corr.mtest function and run corr.mtest again.
+
 

@@ -313,8 +313,79 @@ annotate_figure(combo, top = text_grob("Decontam method alpha diversity plots", 
 
 ggsave("decontam_shannon_and_observed.png")
 
-phylo_decontam_rar <- readRDS("phylo_decontam_rar")
+source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab5_functions.R")
 
+phylo <- readRDS("phylo.rds")
+
+
+phylo_atb <- subset_and_trim(phylo, "Group", "IPD_ATB")
+phylo_no_atb <- subset_and_trim(phylo, "Group", "IPD")
+phylo_NC <- subset_and_trim(phylo, "Group", "controlneg")
+
+dirty_atb_SVs <- colnames(as.data.frame(phylo_atb@otu_table))
+dirty_no_atb_SVs <- colnames(as.data.frame(phylo_no_atb@otu_table))
+dirty_NC_SVs <- colnames(as.data.frame(phylo_NC@otu_table))
+
+list(
+  Antibiotics = dirty_atb_SVs,
+  No_Antibiotics = dirty_no_atb_SVs,
+  Neg_CT = dirty_NC_SVs
+) %>%
+  ggVennDiagram() +
+    scale_x_continuous(expand = expansion(mult = .2)) +
+    theme(plot.title = element_text(face = "bold", size = 16)) +
+    ggtitle("SVs -- before decontam and rarification")
+  ggsave("dirty_venn_diagram_SVS_atb_no_atb.png")
+
+phylo_decontam_rar <- readRDS("phylo_decontam_rar.rds")
+
+phylo_decontam_rar_atb <- subset_and_trim(phylo_decontam_rar, "Group", "Antibiotics")
+phylo_decontam_rar_no_atb <- subset_and_trim(phylo_decontam_rar, "Group", "No antibiotics")
+atb_SVs <- row.names(as.data.frame(phylo_decontam_rar_atb@tax_table))
+no_atb_SVs <- row.names(as.data.frame(phylo_decontam_rar_no_atb@tax_table))
+
+list(
+  Antibiotics = atb_SVs,
+  No_Antibiotics = no_atb_SVs
+) %>%
+  ggVennDiagram() +
+    scale_x_continuous(expand = expansion(mult = .2)) +
+    theme(plot.title = element_text(face = "bold", size = 16)) +
+    ggtitle("SVs -- after decontam and rarification")
+  ggsave("venn_diagram_SVS_atb_no_atb.png")
+
+clean_phylo_rarified <- readRDS("clean_phylo_rarified.rds")
+
+phylo_clean_rar_atb <- subset_and_trim(clean_phylo_rarified, "Group", "Antibiotics")
+phylo_clean_rar_no_atb <- subset_and_trim(clean_phylo_rarified, "Group", "No antibiotics")
+clean_atb_SVs <- row.names(as.data.frame(phylo_clean_rar_atb@tax_table))
+clean_no_atb_SVs <- row.names(as.data.frame(phylo_clean_rar_no_atb@tax_table))
+
+list(
+  Antibiotics = clean_atb_SVs,
+  No_Antibiotics = clean_no_atb_SVs
+) %>%
+  ggVennDiagram( set_size = 3) +
+    scale_x_continuous(expand = expansion(mult = .2)) +
+    theme(plot.title = element_text(face = "bold", size = 16)) +
+    ggtitle("SVs -- after clean and rarification")
+  ggsave("clean_venn_diagram_SVS_atb_no_atb.png")
+
+list(
+  ATB_clean = clean_atb_SVs,
+  ATB_decon = atb_SVs,
+  No_ATB_clean = clean_no_atb_SVs,
+  No_ATB_decon = no_atb_SVs
+) %>%
+  ggVennDiagram() +
+    scale_y_continuous(expand = expansion(mult = .2)) +
+    scale_x_continuous(expand = expansion(mult = .2)) +
+    theme(plot.title = element_text(face = "bold", size = 16, hjust = 0.5)) +
+    ggplot2::scale_fill_gradient(low = "blue",high = "yellow") +
+    ggtitle("SVs -- after decontam/clean and rarification")
+ggsave("venn_diagram_clean_decon_SVs.png")
+
+# heat maps
 top_300 <- prune_taxa(names(sort(taxa_sums(phylo_decontam_rar),TRUE)[1:300]), phylo_decontam_rar)
 
 p <- plot_heatmap(top_300)
@@ -336,7 +407,26 @@ ggarrange(plotlist = list(p, atb_p, no_atb_p),
           common.legend = TRUE)
 ggsave("heatmaps_top300_by_group.png")
 
-## dirty and clean taxa analysis
+
+plot_heatmap(phylo_decontam_rar, fill = "Phylum") +   
+  facet_grid(~Group, space = "free", scales = "free") + 
+  theme(legend.position = "bottom", axis.text.y = element_blank()) +
+  ggtitle("Heat maps, grouped by Phylum")
+ggsave("heat_map_phylum.png")
+
+plot_heatmap(phylo_decontam_rar, fill = "Class") +   
+  facet_grid(~Group, space = "free", scales = "free") + 
+  theme(legend.position = "bottom", axis.text.y = element_blank()) +
+  ggtitle("Heat maps, grouped by Class")
+ggsave("heat_map_class.png")
+
+plot_heatmap(top_300, fill = "Class") +   
+  facet_grid(~Group, space = "free", scales = "free") + 
+  theme(legend.position = "bottom", axis.text.y = element_blank()) +
+  ggtitle("Heat maps, top 300, grouped by Class")
+ggsave("heat_map_300_class.png")
+
+## Dirty and clean taxa analysis --------------
 phylo_dirty_with_species <- readRDS("phylo_dirty_with_species.rds")
 
 df_dirty <- as.data.frame(phylo_dirty_with_species@tax_table)
@@ -352,16 +442,6 @@ df_clean <- as.data.frame(Ishaq_clean@tax_table)
 decontam_with_species <- readRDS("phylo_decontam_with_species.rds")
 df_decontam <- as.data.frame(decontam_with_species@tax_table)
 
-# from the internet
-set.seed(20190708)
-genes <- paste("gene",1:1000,sep="")
-x <- list(
-  A = sample(genes,300), 
-  B = sample(genes,525), 
-  C = sample(genes,440),
-  D = sample(genes,350)
-)
-ggVennDiagram(x)
 
 # kingdoms <- list(
 #   dirty = df_dirty$Kingdom,
@@ -385,17 +465,6 @@ for (i in 1:length(classifications)) {
  }
 
 plot_list <- list()
-
-for (i in 1:length(classifications)) {
-  temp <- list(
-    Dirty = df_dirty[,i],
-    Ishaq_clean = df_clean[,i],
-    Decontam = df_decontam[,i])
-  p <- ggVennDiagram(temp) +
-    ggtitle(classifications[i])
-  print(p)
-  # ggsave(paste0(classifications[i], "_venn_diagram.png"), p)
-}
 
 # combo <- ggarrange(plotlist = list(plot10, plot11, plot12),
 #                    labels = c("A", "B", "C"),

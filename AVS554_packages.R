@@ -92,6 +92,8 @@ load_libraries <- function() {
   library(asbio)
   library(microbiome)
   library(ggVennDiagram)
+  library(RColorBrewer)
+  library(corrplot)
 }
 
 
