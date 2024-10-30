@@ -10,21 +10,40 @@ phylo_clean_no_strep_rar <- readRDS('phylo_clean_no_strep_rar.rds')
 # Selected for only Streptococcaceae
 phylo_clean_strep_rar <- readRDS('phylo_clean_strep_rar.rds') 
 
+## Patient metadata ------
+patient_data_correlation_summary <- readRDS("patient_data_correlation_summary.rds")
 
-## Considering syndrome -------------
 
-plot_richness(phylo_rar, 
-              x = "Syndrome", #CHANGE ME, A is whatever factor you want on x-axis
-              measures = "Observed", #CHANGE ME, whatever alpha diversity measure you want. to have multiple, use: = c("Observed","Shannon")
+subset(patient_data_correlation_summary, Variable != "Group" & Variable != "SampleID" ) %>%
+  ggplot(aes(y = Variable, x = as.numeric(p.value), size = 2)) +
+  geom_point(aes(color = as.numeric(estimate.cor))) +
+  scale_size(guide = "none") +
+  scale_color_gradient2(low = "blue",high = "red", midpoint = 0) +
+  theme(panel.background = element_rect(fill = "gray"),
+        axis.title.y = element_blank()) +
+  scale_x_continuous(breaks = seq(0, 1, 0.1)) +
+  labs(color = "Correlation coefficient",
+       x = "p-value") +
+  geom_vline(xintercept = 0.05, color = "red") +
+  annotate("text", x = 0.03, y = 20, label = "p = 0.05", angle = 90) +
+  ggtitle("Correlation of patient metrics, treatment group vs control group") 
+ggsave("correlation_patient_metrics.png")
+
+
+## Richness considering syndrome -------------
+phylo_decontam_rar <- readRDS("phylo_decontam_rar")
+plot_richness(phylo_decontam_rar, 
+              x = "Syndrome", 
+              measures = c("Observed"), #hatever alpha diversity measure you want
               title = NULL) + 
   theme_set(theme_minimal(base_size = 14)) + #make it look pretty
   theme(axis.text.x = element_blank(),
         panel.border = element_rect(color = "black", fill = NA),
-        axis.title.x = element_blank()) + #example, get rid of x axis labels
-  geom_violin(trim = TRUE, aes(fill = Syndrome)) + #optional. CHANGE ME, A is whatever factor to color violins
-  geom_boxplot(width = 0.1, aes(color = Syndrome)) + #optional. CHANGE ME, A is whatever factor to group box plots
+        axis.title.x = element_blank()) + 
+  geom_violin(trim = TRUE, aes(fill = Syndrome)) + 
+  geom_boxplot(width = 0.1, aes(color = Syndrome)) + 
   scale_color_hue(guide = "none") +
-  facet_grid(.~Group, switch = "x", space = "free") + # facet_grid(.~Week, space = "free") +
+  facet_grid(.~Group, switch = "x", space = "free", scales = "free") + # facet_grid(.~Week, space = "free") +
   # theme(legend.position = "none") + #use to get rid of your legend
   ylab("Observed Bacterial Richness (SVs)") +
   # xlab("Week") +
@@ -33,8 +52,8 @@ plot_richness(phylo_rar,
     plot.subtitle = element_markdown()
   ) +
   labs(title = "Nasal aspirate alpha diversity",
-       subtitle = "Rarefied<br>No species removed")
-ggsave("observed_richness_plot.png")
+       subtitle = "Decontam<br>Rarefied")
+ggsave("syndrome_plus_observed_richness_plot.png")
 
 plot_richness(phylo_rar, 
               x = "Syndrome", #CHANGE ME, A is whatever factor you want on x-axis
@@ -470,4 +489,32 @@ plot_list <- list()
 #                    labels = c("A", "B", "C"),
 #                    nrow = 3,
 #                    ncol = 1)
+# this one I'm doing separately because I do want the legend
+plot_bar(tax_glom(phylo_decontam_rar, "Phylum"), fill = "Phylum") +
+  facet_grid(~Group, space = "free", scales = "free")
+ggsave("bar_plot_abundance_by_phylum_glom.png")
 
+
+
+classes_to_plot <- c("Class", "Order", "Family", "Genus")
+for (i in 1:length(classes_to_plot)) {
+  p <- plot_bar(phylo_decontam_rar, fill = classes_to_plot[i]) +
+    facet_grid(~Group, space = "free", scales = "free") +
+    theme(legend.position = "none") +
+    ggtitle(paste0(classes_to_plot[i], ", no glom"))
+  print(p)
+  ggsave(paste0(classes_to_plot[i], "_abundance_bar_chart.png"), plot = p)
+}
+# "Agglomerate" means "collect or form into a mass or group"
+# agglomerate SVs by taxa level to get rid of all the blacklines on the graph. can be done for any level of taxonomy
+# Example:
+# phylo_decontam_rar_glom = tax_glom(phylo_decontam_rar, "Genus")
+
+for (i in 1:length(classes_to_plot)) {
+  p <- plot_bar(tax_glom(phylo_decontam_rar, classes_to_plot[i]), fill = classes_to_plot[i]) +
+    facet_grid(~Group, space = "free", scales = "free") +
+    theme(legend.position = "none") +
+    ggtitle(classes_to_plot[i])
+  print(p)
+  ggsave(paste0(classes_to_plot[i], "_glom_abundance_bar_chart.png"), plot = p)
+}

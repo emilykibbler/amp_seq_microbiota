@@ -67,7 +67,7 @@ install_optional <- function() {
 
 load_libraries <- function() {
   
-  library(tidyverse)
+
   library(devtools)
   library(Rqc)
   library(BiocParallel)
@@ -94,6 +94,8 @@ load_libraries <- function() {
   library(ggVennDiagram)
   library(RColorBrewer)
   library(corrplot)
+  
+  library(tidyverse)
 }
 
 
