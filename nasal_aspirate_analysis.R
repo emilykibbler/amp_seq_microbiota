@@ -649,9 +649,11 @@ alpha_diversity_table
 
 
 
-###  # Write out your research questions, make them specific. --------
+# Write out your research questions, make them specific. 
   # Write a description of your experimental design, including notes about replication, repeated measures, nested design, or other factors which might impact your statistical models.
-  
+# See manuscript https://docs.google.com/document/d/1q4icwy0ZIGTJOfsY6cBDnvcO1PkW_Xpve7MGYT9Gw9k/edit?usp=sharing
+# Document is currently only available to members of the UMaine system, as it is a work in progress
+# The best parts of the report will be added to the GitHub readme
   
   
   
@@ -914,6 +916,7 @@ corrplot(corr_calc,
 
 # see plotting script
 
+## Done up to here -----------
 
 # example from class
 EX_ps_clean.rar.glom = tax_glom(EX_ps_clean.rar, "Phylum")
@@ -927,5 +930,78 @@ EX_ps_clean.rar.stacked = transform_sample_counts(EX_ps_clean.rar, function(x) x
 plot_bar(EX_ps_clean.rar.stacked, fill="Phylum") 
 
 # to filter by abundance and pool low abundance groups: https://github.com/joey711/phyloseq/issues/901
+
+
+## Core community members -----------
+#code from this website: https://microbiome.github.io/tutorials/CoremicrobiotaAmplicon.html
+
+#load libraries as needed
+library(dplyr)
+library(microbiome)
+
+
+# grab the taxonomy to clean up first
+tax.df <- data.frame(tax_table(EX_ps_clean.rar), stringsAsFactors=FALSE)
+
+## if the Genus is empty, replace with the Family
+tax.df$Genus[is.na(tax.df$Genus)] <- tax.df$Family[is.na(tax.df$Genus)]
+
+# put the new taxa back in
+tax_table(EX_ps_clean.rar) <- as.matrix(tax.df)
+
+# check it worked
+as.data.frame(tax_table(EX_ps_clean.rar))$Genus
+
+
+#calculate compositional version of the data (relative abundances)
+core_biomeW.rel <- microbiome::transform(EX_ps_clean.rar, "compositional") #CHANGE ME to your phyloseq object
+
+#This returns the taxa that exceed the given prevalence and minimum abundance detection thresholds. Set your preferred thresholds.
+core_taxa_standardW <- core_members(core_biomeW.rel, detection = 1/10000, prevalence = 60/100) #CHANGE ME
+
+#A full phyloseq object of the core microbiota at those limits is obtained as follows
+phylo.coreW <- core(core_biomeW.rel, detection = 1/10000, prevalence = .6)
+
+###retrieving the associated taxa names from the phyloseq object and add it to what you just made.
+core.taxaW <- taxa(phylo.coreW)
+class(core.taxaW)
+
+# get the taxonomy data and assign it to what you just made.
+tax.matW <- tax_table(phylo.coreW)
+tax.dfW <- as.data.frame(tax.matW)
+
+# add the SVs to last column of what you just made.
+tax.dfW$SV <- rownames(tax.dfW)
+
+## CHANGE ME, write down how many taxa are shared between these samples.
+
+# select taxonomy of only those OTUs that are core members based on the thresholds that were used.
+core.taxa.classW <- dplyr::filter(tax.dfW, rownames(tax.dfW) %in% core.taxaW)
+knitr::kable(head(core.taxa.classW))
+
+# save the list so you can access later, can report just the list
+write.csv(core.taxa.classW, "~/core.taxa.example.csv")
+
+
+# graph the abundance of those shared taxa, here are some example: https://microbiome.github.io/tutorials/Core.html
+
+#aggregate the genera so we don't get a lot of lines separating all the SVs
+plot.gen <- aggregate_taxa(phylo.coreW, "Genus")
+
+# load libraries as needed
+library(ggplot2)
+library(RColorBrewer)
+library(viridis)
+
+prevalences <- seq(.05, 1, .05)
+detections <- round(10^seq(log10(1e-4), log10(.2), length = 10), 3)
+
+plot_core(plot.gen, 
+          plot.type = "heatmap", 
+          prevalences = prevalences, 
+          detections = detections, min.prevalence = .5) + #CHANGE min prevalence
+  xlab("Detection Threshold (Relative Abundance (%))") + ylab("Bacterial SVs") +
+  theme_minimal() + scale_fill_viridis()
+
 
 

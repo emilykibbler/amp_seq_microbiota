@@ -71,17 +71,12 @@ load_libraries <- function() {
   library(devtools)
   library(Rqc)
   library(BiocParallel)
-  library(Rqc)
   library(Biostrings)
   library(dada2); packageVersion('dada2')
   library(beepr)
   library(phyloseq)
   library(decontam)
   library(vegan)
-  library(RColorBrewer)
-  library(ggpubr)
-  library(ggsignif)
-  library(ggtext)
   library(lme4)
   library(lmerTest)
   library(emmeans)
@@ -91,11 +86,21 @@ load_libraries <- function() {
   library(conover.test)
   library(asbio)
   library(microbiome)
+  
+  #plotting
+  library(RColorBrewer)
+  library(ggpubr)
+  library(ggsignif)
+  library(ggtext)
   library(ggVennDiagram)
   library(RColorBrewer)
   library(corrplot)
+  library(viridis)
   
-  library(tidyverse)
+  # Load tidyverse last so it has final say in masking functions
+  # Too gay to function without the tidyverse, as they say
+  library(tidyverse) 
 }
+
 
 

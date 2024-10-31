@@ -67,7 +67,9 @@ ggplot(plotData, aes(x = type, y = as.numeric(totals))) +
 ggsave("reads_sample_type_QC_status.png")
 
 ## Dirty alpha diversity plot --------
-#FIXME!!!!!!!
+#FIXME!!!!!!! Weird stuff is happening!
+phylo <- readRDS("phylo.rds")
+
 plot_richness(phylo, x = "Group",
               measures = c("Observed","Chao1", "Shannon"),
               color = "Group") +
@@ -98,6 +100,36 @@ plot_richness(phylo, x = "Group",
         plot.title = element_text(size = 16, face = "bold")) +
   # scale_x_discrete(labels = c("Negative control", "No antibiotics", "Antibiotics")) +
   ggtitle("Alpha Diversity; Before Data Cleaning")
+# ycl6 in the github forum for the phyloseq package recommends using estimate_richness instead of plot_richness
+# for more control over the plot
+# let's try that
+dirty_rich_df <- estimate_richness(phylo, measures = c("Observed","Chao1", "Shannon"))
+# row names get a little messed up, function must not tolerate a mix of numeric and character
+row.names(dirty_rich_df) <- row.names(phylo@sam_data)
+dirty_rich_df <- cbind(dirty_rich_df, phylo@sam_data)
+saveRDS(dirty_rich_df, "dirty_rich_df.rds")
+
+esk_plot_richness <- function(input, the_method) { # some error messages might be nice to check inputs
+  p <- ggplot(input, aes(x = Group)) +
+    geom_violin(aes(y = !!sym(the_method), fill = Group)) +
+    scale_fill_discrete(labels = c("Negative control", "No antibiotics", "Antibiotics")) +
+    geom_boxplot(aes(y = !!sym(the_method)), width = 0.1) +
+    theme(axis.title.x = element_blank(),
+          axis.text.x = element_blank(),
+          legend.position = "top")
+  return(p)
+}
+p1 <- esk_plot_richness(dirty_rich_df, "Observed")
+p2 <- esk_plot_richness(dirty_rich_df, "Chao1")
+p3 <- esk_plot_richness(dirty_rich_df, "Shannon")
+ggarrange(plotlist = list(p1, p2, p3),
+          # labels = c("A", "B", "C"),
+          common.legend = TRUE,
+          nrow = 3,
+          ncol = 1) %>%
+  annotate_figure(top = text_grob("Before cleaning alpha diversity plots", size = 16))
+
+ggsave("dirty_diversity_panel_plot.png")
 
 ## Richness considering syndrome -------------
 phylo_decontam_rar <- readRDS("phylo_decontam_rar")
@@ -273,7 +305,7 @@ plot6 <- plot_richness(phylo_clean_strep_rar,
 ggarrange(plotlist = list(plot4, plot5, plot6),
           labels = c("A", "B", "C"),
           nrow = 1,
-          ncol = 3)
+          ncol = 3) 
 ggsave("shannon_richness.png")
 
 
