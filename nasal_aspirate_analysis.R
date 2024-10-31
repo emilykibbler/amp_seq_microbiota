@@ -7,7 +7,7 @@ setwd("/Users/emilykibbler/Desktop/projects/R/AVS_554/nasal")
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab2_functions.R")
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab3_functions.R")
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab5_functions.R")
-source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab7_functions.R")
+source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab8_functions.R")
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab9_functions.R")
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/AVS554_packages.R")
 # install_necessary()
@@ -91,8 +91,6 @@ comparison[nrow(comparison) + 1, ] <- c("Median exp_samp filtered reads", 72591,
 comparison[nrow(comparison) + 1, ] <- c("Minimum exp_samp filtered reads", 12559, NA)
 
 ## Lab 3: DADA2 learn error rates (Lab 3) ----------------------------
-
-# source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab3_functions.R")
 
 
 # file_info <- readRDS("file_info.rds")
@@ -185,9 +183,30 @@ pts_meta <- subset(meta, Group != "controlneg")
 # single check to make sure I can run this function on categorical data
 cor(as.numeric(as.factor(pts_meta[,"Group"])), as.numeric(as.factor(pts_meta[,"Gender"])), method = "kendall") # crushed it
 numeric_columns <- c("Age", "Birth_weight", "Gestational_age", "House_surface", "Breastfeeding_time", "Pneumococcal_load", "Fever_time_before_sampling", "C_reactive_protein" , "Hemoglobin", "Leukocytes", "Hospitalization_days" )
+categorical_pt_data <- pts_meta[, !(names(pts_meta) %in% numeric_columns)]
+categorical_pt_data <- subset(categorical_pt_data, select = -Sample_type)
+numeric_pt_data <- pts_meta[, names(pts_meta) %in% c("Group", numeric_columns)]
 
+patient_data_correlation_summary <- data.frame(matrix(ncol = 11, nrow = 0))
+colnames(patient_data_correlation_summary) <- c(names(unlist(cor.test(as.numeric(as.factor(meta[,"Group"])), as.numeric(meta[,"Birth_weight"]), method = "pearson", na.action = "na.remove"))), "Variable")
 
+for (i in 1:ncol(categorical_pt_data)) {
+  temp <- subset(categorical_pt_data, !is.na(colnames(categorical_pt_data)[i]))
+  patient_data_correlation_summary[nrow(patient_data_correlation_summary) + 1, ] <-
+    c(unlist(cor.test(as.numeric(as.factor(temp[,"Group"])), as.numeric(as.factor(temp[,i])), method = "pearson")), colnames(categorical_pt_data)[i])
+}
+for (i in 1:ncol(numeric_pt_data)) {
+  if (colnames(numeric_pt_data)[i] != "Group") {
+  temp <- subset(numeric_pt_data, !is.na(colnames(numeric_pt_data)[i]))
+  patient_data_correlation_summary[nrow(patient_data_correlation_summary) + 1, ] <-
+    c(unlist(cor.test(as.numeric(as.factor(temp[,"Group"])), as.numeric(temp[,i]), method = "pearson")), colnames(numeric_pt_data)[i])
+  }
+}
+
+saveRDS(patient_data_correlation_summary, "patient_data_correlation_summary.rds")
+### Filtering steps analysis ---------
 # 2.5 check the dimensions of the three data files you need for this to make sure the number of rows matches in each. If they do not, you may need to add/remove rows from your metadata file in case samples were removed/retained from your dataset.
+
 dim(filtoutput) # 93 x 2
 dim(seqtab_nochim) # 93 x 5144
 dim(meta) # 98 x 46
@@ -211,21 +230,20 @@ View(meta[row.names(meta)[!(row.names(meta) %in% row.names(filtoutput))],])
 View(meta[row.names(meta)[row.names(meta) %in% row.names(filtoutput)],])
 
 
-meta_cleaned <- meta[row.names(meta)[row.names(meta) %in% row.names(filtoutput)],]
-identical(row.names(meta_cleaned), row.names(filtoutput)) # False
-match(row.names(meta_cleaned), row.names(filtoutput)) # they do match, but in different orders
-meta_cleaned <- meta_cleaned[order(row.names(meta_cleaned)),]
-identical(row.names(meta_cleaned), row.names(filtoutput)) # true
-identical(row.names(meta_cleaned), row.names(seqtab_nochim)) # true, good to go
-saveRDS(meta_cleaned, "meta.rds")
+meta <- meta[row.names(meta)[row.names(meta) %in% row.names(filtoutput)],]
+identical(row.names(meta), row.names(filtoutput)) # False
+match(row.names(meta), row.names(filtoutput)) # they do match, but in different orders
+meta <- meta[order(row.names(meta)),]
+identical(row.names(meta), row.names(filtoutput)) # true
+identical(row.names(meta), row.names(seqtab_nochim)) # true, good to go
+saveRDS(meta, "meta.rds")
 saveRDS(filtoutput, "filtoutput.rds")
 saveRDS(seqtab_nochim, "seqtab_nochim.rds")
-# Write over meta df
-meta <- meta_cleaned
+
 
 
 # 3. Bind columns from filtered output, # of seqs/sample from the no.chim seq table, and the treatment factor, all into a new variable
-track <- cbind(filtoutput, rowSums(seqtab_nochim), meta_cleaned$Sample_type) 
+track <- cbind(filtoutput, rowSums(seqtab_nochim), meta$Sample_type) 
 # 4. Assign column names to that new variable
 colnames(track) <- c("reads.in","filtered", "nonchimeras", "Sample_type") 
 
@@ -236,7 +254,7 @@ rownames(track) <- rownames(meta)
 head(track)
 
 # 7. Save the tracking variable and data as an R file
-saveRDS(track, 'tracked_seqs.rds') 
+saveRDS(track, 'track.rds') 
 
 # 8. Plot all reads along the QC workflow
 # make a prettier plot by taking the data
@@ -246,22 +264,7 @@ plotData <- as.data.frame(track) %>% gather(type, totals, reads.in, filtered, no
 plotData$type <- factor(plotData$type, levels = c("reads.in", "filtered", "nonchimeras"))
 
 ### Plot QC steps ------------------
-
-# plot with Sample_type along the X axis
-ggplot(plotData,aes(x = Sample_type, y = as.numeric(totals))) + geom_jitter(aes(color = type)) + 
-  ylab("Sequences") + 
-  xlab("Sample_type") +
-  # theme(axis.text.x = element_text(angle = 0, size = 12, vjust = -0.5)) +
-  ggtitle("Reads by sample type")
-ggsave("reads_filt_chim_sample_type.png")
-
-# or, plot with QA stage along the X axis
-ggplot(plotData,aes(x = type,y = as.numeric(totals))) + geom_jitter(aes(color = Sample_type)) + 
-  ylab("Sequences") + 
-  xlab("QA stage") +
-  ggtitle("Reads by filtering step")
-ggsave("reads_sample_type_QC_status.png")
-
+# See plot script
 
 
 
@@ -286,7 +289,7 @@ phylo <- phyloseq(otu_table(seqtab_nochim, taxa_are_rows = FALSE), # even though
 
 phylo
 saveRDS(phylo, "phylo.rds")
-# phylo <- readRDS("phylo.rds")
+phylo <- readRDS("phylo.rds")
 # how many samples made it this far? 93 samples, 46 variables, 5144 taxa. Taxa are the SV columns
 
 
@@ -294,20 +297,10 @@ saveRDS(phylo, "phylo.rds")
 # If you have sequenced controls, it's a good idea to look at your data in comparison to them.
 
 # Alpha diversity peek 
-plot_richness(phylo, x = "Sample_type", # CHANGE the x-axis to a factor of your choice
-              measures = c("Observed","Chao1", "Shannon"), # these are some of the alpha diversity measures you can use 
-              color = "Syndrome") + 
-  geom_jitter() +
-  theme_bw() + # a ggplot theme to make the graph look nice
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.title = element_text(size = 9),
-        legend.text = element_text(size = 7),) +
-  ggtitle("Alpha diversity, before cleaning")
-
-ggsave("initial_alpha_diversity_plot.png")
+# see plot script
 
 
-## Note: hopefully, diversity/richness is lower in the Negative controls than real samples
+## Note: hopefully, diversity/richness is lower in the Negative controls than real samples. Check!
 
 
 
@@ -323,19 +316,23 @@ phylo_ord <- ordinate(phylo, #calculate similarities
                       "jaccard", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted)
 
 # If all the negatives are eliminated by filter and trim:
-phylo_ord <- ordinate(prune_samples(sample_sums(phylo) > 0, phylo), #calculate similarities
-                      method = "PCoA", #ordination type
-                      "jaccard", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted)
+  # phylo_ord <- ordinate(prune_samples(sample_sums(phylo) > 0, phylo), #calculate similarities
+  #                       method = "PCoA", #ordination type
+  #                       "jaccard", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted)
 
 
 plot_ordination(phylo, phylo_ord, type = "samples", color = "Group") +
+  geom_point(size = 2.5) +
+  scale_color_hue(name = "Sample group", labels = c("Negative control", "No antibiotics", "Antibiotics")) +
+  theme(panel.border = element_rect(color = "gray", fill = NA, size = 1),
+        legend.position = "top") +
   ggtitle("Ordination plot, pre-clean")
 ggsave("ordination_before_plot.png") # save this graph for later
 
 # Initial clustering by extraction/sequencing batch or confounding variables implies contamination issues (see next section)
 # Horse-shoe patterns indicate underlying patterns to the data
 # The negative controls are supposed to be separate from the experimental samples and they are
-# Out of 17 negatives controls provided, 13 have been filtered out so far
+
 
 
 
@@ -559,7 +556,7 @@ sample_data(phylo_decontam_rar)$Group <- factor(sample_data(phylo_decontam_rar)$
                                                 levels = c("IPD_ATB", "IPD"), 
                                                 labels = c("Antibiotics", "No antibiotics")) 
 
-saveRDS(phylo_decontam_rar, "decontam_phylo_rarified.rds")
+saveRDS(phylo_decontam_rar, "phylo_decontam_rar.rds")
 
 # Helpful to have an SV table from the clean, rarefied phyloseq
 write.csv(otu_table(phylo_decontam_rar, taxa_are_rows = FALSE), 'decontam_phylo_rarified.csv')
@@ -793,8 +790,8 @@ phylo_decontam_rar_glom = tax_glom(phylo_decontam_rar, "Phylum")
 
 ## Correlogram --------------
 # This makes a correlation matrix plot: https://cran.r-project.org/web/packages/corrplot/vignettes/corrplot-intro.html
-
-
+phylo_decontam_rar <- readRDS("phylo_decontam_rar.rds")
+phylo_decontam_rar_rich <- readRDS("phylo_decontam_rar_rich.rds")
 
 
 # corrplot requires one dataframe of metadata and/or seqtab data.  Any columns in the dataframe will be correlated against all others.  Too many columns makes the graph unreadable, try to keep it to <50.
@@ -806,7 +803,7 @@ top100 = prune_taxa(top100OTUs, phylo_decontam_rar)
 
 # combine with your metadata and create one dataframe object. you can include other info that you created for a previous dataframe, as long as those objects are still in your R environment. Reminder, you can only use numeric data in a correlation matrix, so you will have to drop certain columns or make them numeric instead.
 # Coerce to data.frame and add the metadata for these samples
-top100_sd = as(otu_table(top100), "matrix")
+top100_sd = as(otu_table(top100, taxa_are_rows = FALSE), "matrix")
 top100_sd = as.data.frame(top100_sd)
 
 # add Genus names in place of the full sequence name that is in the SV columns
@@ -884,8 +881,7 @@ corr_calc <- cor(corr_analysis_df,
 # corr.mtest is a custom function written by Dr. Ishaq, see lab9_functions file
 res1 <- cor.mtest(corr_analysis_df,0.95)
 # Note: if you come up with a warning message, 
-# it means that one or more of your columns generated correlations of value 0, 
-# which makes it angry.  
+# it means that one or more of your columns generated correlations of value 0, which makes it angry.  
 # Visualize the plot, and "?" will come up in those columns.  
 # To fix, remove the column or add a data transformation, to the dataframe you created to make this.  
 # Set the corr.mtest function and run corr.mtest again.

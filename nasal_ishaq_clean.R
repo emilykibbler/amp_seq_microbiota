@@ -76,6 +76,9 @@ comparison[nrow(comparison) + 1, ] <- c("Minimum reads per exp_samp after clean"
 
 comparison[nrow(comparison) + 1, ] <- c("Total SVs before clean", 5144, NA)
 comparison[nrow(comparison) + 1, ] <- c("Total SVs after clean", 4952, NA)
+summary(make_SV_summary(as.data.frame(clean_data@otu_table))$SVs)
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 5.0    42.0   113.5   150.7   233.0   489.0 
 
 
 ### Summary of decontamination ----

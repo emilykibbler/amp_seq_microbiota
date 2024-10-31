@@ -29,12 +29,81 @@ subset(patient_data_correlation_summary, Variable != "Group" & Variable != "Samp
   ggtitle("Correlation of patient metrics, treatment group vs control group") 
 ggsave("correlation_patient_metrics.png")
 
+## Plot QC steps ------------------
+
+track <- readRDS('tracked.rds')
+
+plotData <- as.data.frame(track) %>% gather(type, totals, reads.in, filtered, nonchimeras)
+
+#order the types from raw reads to cleanest
+plotData$type <- factor(plotData$type, levels = c("reads.in", "filtered", "nonchimeras"), labels = c("Unfiltered reads", "Filtered and trimmed reads", "Nonchimeric reads"))
+
+
+
+# plot with Sample_type along the X axis
+# ggplot(plotData,aes(x = Sample_type, y = as.numeric(totals))) + geom_jitter(aes(color = type)) + 
+#   ylab("Sequences") + 
+#   xlab("Sample_type") +
+#   # theme(axis.text.x = element_text(angle = 0, size = 12, vjust = -0.5)) +
+#   ggtitle("Reads by sample type")
+# ggsave("reads_filt_chim_sample_type.png")
+
+
+# or, plot with QA stage along the X axis
+plotData$Sample_type <- factor(plotData$Sample_type, levels = c("experimental", "negative"), labels = c("Patient", "Negative control"))
+
+ggplot(plotData, aes(x = type, y = as.numeric(totals))) +
+  geom_jitter(aes(color = Sample_type)) + 
+  geom_boxplot(aes(color = Sample_type)) +
+  scale_color_hue(name = "Sample type") +
+  ylab("Sequences") + 
+  xlab("QA stage") +
+  theme(axis.text.x = element_text(angle = 0, size = 12),
+        axis.title.x = element_text(size = 14),
+        panel.border = element_rect(color = "gray", fill = NA, size = 1),
+        legend.position = "top",
+        plot.title = element_text(size = 16, face = "bold")) +
+  ggtitle("Reads by filtering step")
+ggsave("reads_sample_type_QC_status.png")
+
+## Dirty alpha diversity plot --------
+#FIXME!!!!!!!
+plot_richness(phylo, x = "Group",
+              measures = c("Observed","Chao1", "Shannon"),
+              color = "Group") +
+  geom_violin() +
+  # geom_boxplot() +
+  scale_color_hue(labels = c("Negative control", "No antibiotics", "Antibiotics")) +
+  theme_bw() + # a ggplot theme to make the graph look nice
+  theme(legend.title = element_blank(),
+        legend.text = element_text(size = 12),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        legend.position = "top",
+        plot.title = element_text(size = 16, face = "bold")) +
+  # scale_x_discrete(labels = c("Negative control", "No antibiotics", "Antibiotics")) +
+  ggtitle("Alpha Diversity; Before Data Cleaning")
+ggsave("initial_alpha_diversity_plot.png")
+
+plot_richness(phylo, x = "Group",
+              measures = c("Observed","Chao1", "Shannon")) +
+  geom_boxplot(aes(color = "Group")) +
+  scale_color_hue(labels = c("Negative control", "No antibiotics", "Antibiotics")) +
+  theme_bw() + # a ggplot theme to make the graph look nice
+  theme(legend.title = element_blank(),
+        legend.text = element_text(size = 12),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        legend.position = "bottom",
+        plot.title = element_text(size = 16, face = "bold")) +
+  # scale_x_discrete(labels = c("Negative control", "No antibiotics", "Antibiotics")) +
+  ggtitle("Alpha Diversity; Before Data Cleaning")
 
 ## Richness considering syndrome -------------
 phylo_decontam_rar <- readRDS("phylo_decontam_rar")
 plot_richness(phylo_decontam_rar, 
               x = "Syndrome", 
-              measures = c("Observed"), #hatever alpha diversity measure you want
+              measures = c("Observed"), #whatever alpha diversity measure you want
               title = NULL) + 
   theme_set(theme_minimal(base_size = 14)) + #make it look pretty
   theme(axis.text.x = element_blank(),
