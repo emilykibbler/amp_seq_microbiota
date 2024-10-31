@@ -619,3 +619,57 @@ for (i in 1:length(classes_to_plot)) {
   print(p)
   ggsave(paste0(classes_to_plot[i], "_glom_abundance_bar_chart.png"), plot = p)
 }
+
+## Core SVs ------
+source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab9_functions.R")
+
+phylo.coreW <- core_taxa_finder(phylo_decontam_rar, c(1/10000, 25/100)) # this function is in lab9_functions
+#aggregate the genera so we don't get a lot of lines separating all the SVs
+plot.gen <- aggregate_taxa(phylo.coreW, "Genus")
+
+prevalences <- seq(.05, 1, .05)
+detections <- round(10^seq(log10(1e-4), log10(.2), length = 10), 3)
+
+p1 <- plot_core(plot.gen, 
+          plot.type = "heatmap", 
+          prevalences = prevalences, 
+          detections = detections, min.prevalence = 1/10000) + #CHANGE min prevalence
+  xlab("Detection Threshold (Relative Abundance (%))") +
+  ylab("Bacterial SVs") +
+  theme_minimal() + scale_fill_viridis() +
+  ggtitle("Core SVs, All Patients")
+
+atb_phylo_decontam_rar <- subset_samples(phylo_decontam_rar, Group == "Antibiotics")
+atb_phylo.coreW <- core_taxa_finder(atb_phylo_decontam_rar, c(1/10000, 25/100))
+atb_plot.gen <- aggregate_taxa(atb_phylo.coreW, "Genus")
+
+p2 <- plot_core(atb_plot.gen, 
+          plot.type = "heatmap", 
+          prevalences = prevalences, 
+          detections = detections, min.prevalence = 1/10000) + #CHANGE min prevalence
+  xlab("Detection Threshold (Relative Abundance (%))") +
+  ylab("Bacterial SVs") +
+  theme_minimal() + scale_fill_viridis() +
+  ggtitle("Core SVs, Antibiotics")
+
+no_atb_phylo_decontam_rar <- subset_samples(phylo_decontam_rar, Group == "No antibiotics")
+no_atb_phylo.coreW <- core_taxa_finder(no_atb_phylo_decontam_rar, c(1/10000, 25/100))
+no_atb_plot.gen <- aggregate_taxa(no_atb_phylo.coreW, "Genus")
+
+p3 <- plot_core(no_atb_plot.gen, 
+          plot.type = "heatmap", 
+          prevalences = prevalences, 
+          detections = detections, min.prevalence = 1/10000) + #CHANGE min prevalence
+  xlab("Detection Threshold (Relative Abundance (%))") +
+  ylab("Bacterial SVs") +
+  theme_minimal() + scale_fill_viridis() +
+  ggtitle("Core SVs, No Antibiotics")
+
+ggarrange(plotlist = list(p1, p2, p3),
+          # labels = c("A", "B", "C"),
+          common.legend = TRUE,
+          nrow = 1,
+          ncol = 3,
+          legend = "bottom")# %>%
+  # annotate_figure(top = text_grob("Before cleaning alpha diversity plots", size = 16))
+ggsave("core_SV_heatmaps.png")
