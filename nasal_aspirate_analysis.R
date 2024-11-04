@@ -665,8 +665,8 @@ alpha_diversity_table
 
 # use phyloseq to measure alpha diversity
 
-# phylo_decontam_rar_rich <- estimate_richness(phylo_decontam_rar, measures = c("Observed", "Shannon")) #change to whatever measures you want
-
+phylo_decontam_rar_rich <- estimate_richness(phylo_decontam_rar, measures = c("Observed", "Shannon")) #change to whatever measures you want
+saveRDS(phylo_decontam_rar_rich, "phylo_decontam_rar_rich.rds")
 # use phyloseq to calculate Faith's Diversity metric (optional), https://rdrr.io/github/twbattaglia/btools/man/estimate_pd.html
 # EX_faith <- estimate_pd(EX_ps_clean.rar)
 
@@ -774,7 +774,7 @@ t.test(atb_df$Shannon, no_atb_df$Shannon) # not significantly different
 # https://www.data-to-viz.com/
 # https://r-graph-gallery.com/index.html
 
-## Heatmaps --------------
+### Heatmaps --------------
 # base plot
 plot_heatmap(phylo_decontam_rar)
 # follow the tutorial to make prettier versions in phyloseq: https://joey711.github.io/phyloseq/plot_heatmap-examples.html
@@ -790,11 +790,11 @@ phylo_decontam_rar_glom = tax_glom(phylo_decontam_rar, "Phylum")
 # heatmap(otu_table(EX_ps_clean.rar))
 
 
-## Correlogram --------------
+### Correlogram --------------
 # This makes a correlation matrix plot: https://cran.r-project.org/web/packages/corrplot/vignettes/corrplot-intro.html
 phylo_decontam_rar <- readRDS("phylo_decontam_rar.rds")
-phylo_decontam_rar_rich <- readRDS("phylo_decontam_rar_rich.rds")
-
+# phylo_decontam_rar_rich <- readRDS("phylo_decontam_rar_rich.rds") # this is the same as below but less
+phylo_decontam_rar_rich_df <- readRDS("phylo_decontam_rar_rich_df.rds") # this contains the same info as above but sample metadata too
 
 # corrplot requires one dataframe of metadata and/or seqtab data.  Any columns in the dataframe will be correlated against all others.  Too many columns makes the graph unreadable, try to keep it to <50.
 
@@ -815,8 +815,9 @@ top100_tax$Genus[is.na(top100_tax$Genus)] <- top100_tax$Family[is.na(top100_tax$
 colnames(top100_sd) = top100_tax$Genus
 
 # paste all the components together
-top100_decontam_rar_corr_df <- cbind(top100_sd, phylo_decontam_rar_rich, phylo_decontam_rar_even, phylo_decontam_rar_sd)
+# top100_decontam_rar_corr_df <- cbind(top100_sd, phylo_decontam_rar_rich, phylo_decontam_rar_rich, phylo_decontam_rar_sd)
 
+top100_decontam_rar_corr_df <- cbind(top100_sd, phylo_decontam_rar_rich_df)
 # check header to make sure it looks good
 head(top100_decontam_rar_corr_df)
 
@@ -828,30 +829,34 @@ head(top100_decontam_rar_corr_df)
 # 
 # # for example, drop a column with factorial data
 # EX_ps_clean.rar.corr.df <- subset(EX_ps_clean.rar.corr.df, select = -c(Treatment, Diet, Sheep_ID, ICTERIC_INDEX, LIPEMIC_INDEX))
-
-# check header to make sure it looks good
-head(EX_ps_clean.rar.corr.df)
-
-# check that all remaining columns are numeric instead of factor or character
-str(EX_ps_clean.rar.corr.df)
+# 
+# # check header to make sure it looks good
+# head(EX_ps_clean.rar.corr.df)
+# 
+# # check that all remaining columns are numeric instead of factor or character
+# str(EX_ps_clean.rar.corr.df)
 
 # clean up any columns which are not registering as numeric
 # EX_ps_clean.rar.corr.df <- sapply(EX_ps_clean.rar.corr.df, as.numeric)
 
+# This is from browsing the metadata
 numeric_columns <- c("Age", "Birth_weight", "Gestational_age", "House_surface", "Breastfeeding_time", "Pneumococcal_load", "Fever_time_before_sampling", "C_reactive_protein" , "Hemoglobin", "Leukocytes", "Hospitalization_days" )
+colnames(top100_decontam_rar_corr_df)
+sapply(top100_decontam_rar_corr_df, class)
 top100_decontam_rar_corr_df[,numeric_columns] <- sapply(top100_decontam_rar_corr_df[numeric_columns],as.numeric)
 sapply(top100_decontam_rar_corr_df, class)
 numeric_columns <- colnames(top100_decontam_rar_corr_df)[which(as.data.frame(sapply(top100_decontam_rar_corr_df, class))[,1] == "numeric")]
-
+numeric_columns
 
 
 # alternatively, load a premade dataframe containing your chosen SVs from your sequence table (otu)table in phyloseq) and the metadata you want to include
 # EX_ps_clean.rar.corr.df <- read.csv("example_correlogram_dataframe.csv", check.names = FALSE, header=T, row.names=1)
 
-
-
+# confirm that my numeric columns are there
+sapply(top100_decontam_rar_corr_df[,numeric_columns], class)
+head(top100_decontam_rar_corr_df[,numeric_columns])
 # run correlations
-corr_calc <- cor(top100_decontam_rar_corr_df[,numeric_columns], 
+corr_calc <- cor(top100_decontam_rar_corr_df[,numeric_columns],
                     use = "complete.obs", # use=Specifies the handling of missing data. Options are all.obs (assumes no missing data - missing data will produce an error), complete.obs (listwise deletion), and pairwise.complete.obs (pairwise deletion)
                     method = "spearman") # correlation method=pearson, spearman, or kendall
 
@@ -910,7 +915,7 @@ corrplot(corr_calc,
 
 
 
-## Barplots------------------
+### Barplots------------------
 # can add ggplot components to make it pretty
 #don't recommend using genus here, it make crash R
 
@@ -943,15 +948,139 @@ source("~/Desktop/projects/R/AVS_554/lab9_functions.R")
 # test_phylo.coreW <- core_taxa_finder(phylo_decontam_rar, c(1/10000, 25/100))
 # identical(test_phylo.coreW, phylo.coreW)
 phylo.coreW <- core_taxa_finder(phylo_decontam_rar, c(1/10000, 25/100))
+saveRDS(phylo.coreW, "phylo.coreW.rds")
 
 prevalences <- seq(.05, 1, .05)
 detections <- round(10^seq(log10(1e-4), log10(.2), length = 10), 3)
 
 atb_phylo_decontam_rar <- subset_samples(phylo_decontam_rar, Group == "Antibiotics")
+saveRDS(atb_phylo_decontam_rar, "atb_phylo_decontam_rar.rds")
 atb_phylo.coreW <- core_taxa_finder(atb_phylo_decontam_rar, c(1/10000, 25/100))
+saveRDS(atb_phylo.coreW, "atb_phylo.coreW.rds")
 
 no_atb_phylo_decontam_rar <- subset_samples(phylo_decontam_rar, Group == "No antibiotics")
+saveRDS(no_atb_phylo_decontam_rar, "no_atb_phylo_decontam_rar.rds")
 no_atb_phylo.coreW <- core_taxa_finder(no_atb_phylo_decontam_rar, c(1/10000, 25/100))
-# Heat maps found in the plot script
+saveRDS(no_atb_phylo.coreW, "no_atb_phylo.coreW.rds")
+# Heat maps of the above data can be found in the plot script
+
+
+
+
+
+
+
+# Lab 10: Comparing changes in taxonomy (Lab 10) ---------------------------------
+## Focusing on a single taxon -------
+
+
+# transform to relative abundance
+relabun.ps <- transform_sample_counts(phylo_decontam_rar, function(x) x / sum(x)) 
+
+# glom ASVs by genus
+ps_genus <- tax_glom(relabun.ps, taxrank = "Genus", NArm = FALSE) 
+
+#subset by the genus of choice. Taxon is not present if you get error: "length of 'dimnames' [1] not equal to array extent" 
+ps_genusP <- subset_taxa(ps_genus, Genus %in% c("Streptococcus"))                      
+
+# melt the data into a different configuration
+genus.df <- psmelt(ps_genusP) 
+
+# grab that abundance data
+MySummary <- genus.df %>% group_by(Group) %>% summarize(mean_abund = mean(Abundance, na.rm=TRUE)) 
+
+#check it
+head(MySummary)
+
+# graph it
+ggplot(data = MySummary, aes(x = Group, y = mean_abund)) +
+  geom_point(aes(color = Group)) +
+  ylab("Mean relative abundance of reads")
+
+
+
+## Differential Abundance with DESeq ---------------------------------
+# DESeq only does pairwise comparisons. To make a multifactorial comparison and graph, use "DESeq_and_ternary_plot_example.R".  You can also subset your data
+
+packageVersion("DESeq2")
+
+phylo_decontam_with_species <- readRDS("phylo_decontam_with_species.rds")
+phylo_decontam_with_species_exp_samples <- subset_and_trim(phylo_decontam_with_species, "Sample_type", "experimental") #CHANGE ME 
+
+sample_data(phylo_decontam_with_species_exp_samples)$Group <- factor(sample_data(phylo_decontam_with_species_exp_samples)$Group, 
+                                                levels = c("IPD_ATB", "IPD"), 
+                                                labels = c("Antibiotics", "No antibiotics")) 
+
+
+# subset_and_trim <- function(starting_object, category, subset_on)
+
+# OPTIONAL if you need to subset 
+atb_decontam <- subset_and_trim(phylo_decontam_with_species_exp_samples, "Group", "Antibiotics")
+no_atb_decontam <- subset_and_trim(phylo_decontam_with_species_exp_samples, "Group", "No antibiotics")
+# A little confused, I made these subsets but didn't use them
+# Maybe this is for if you have more than one factor?
+
+
+# grab phyloseq data for use in deseq
+diagdds = phyloseq_to_deseq2(phylo_decontam_with_species_exp_samples, ~ Group) #CHANGE ME to an factor with only 2 levels
+
+# calculate differential abundance
+gm_mean =  function(x, na.rm = TRUE){
+  exp(sum(log(x[x > 0]), na.rm = na.rm) / length(x))
+}
+geoMeans = apply(counts(diagdds), 1, gm_mean)
+diagdds = estimateSizeFactors(diagdds, geoMeans = geoMeans)
+diagdds = DESeq(diagdds, fitType = "local")
+
+# calculate significance for those abundance calculations
+res = results(diagdds)
+res = res[order(res$padj, na.last = NA), ]
+alpha = 0.01
+sigtab = res[(res$padj < alpha), ]
+sigtab = cbind(as(sigtab, "data.frame"), as(tax_table(phylo_decontam_with_species_exp_samples)[rownames(sigtab), ], "matrix")) #CHANGE ME if you didn't subset your data
+
+head(sigtab)
+
+dim(sigtab) # 17 x 13
+#CHANGE ME number of SVs that were different between them ???
+
+
+# calculate log changes and set
+sigtab = sigtab[sigtab[, "log2FoldChange"] < 0, ] #CHANGE ME. use this to select only positive (or negative) log changes
+sigtab = sigtab[, c("baseMean", "log2FoldChange", "lfcSE", "padj", "Phylum", "Class", "Family", "Genus")] #CHANGE ME add Order or Species - if you have it
+
+# Phylum order
+x = tapply(sigtab$log2FoldChange, sigtab$Phylum, function(x) max(x))
+x = sort(x, TRUE)
+sigtab$Phylum = factor(as.character(sigtab$Phylum), levels = names(x))
+
+# Genus order
+x = tapply(sigtab$log2FoldChange, sigtab$Genus, function(x) max(x))
+x = sort(x, TRUE)
+sigtab$Genus = factor(as.character(sigtab$Genus), levels = names(x))
+
+
+## if the Genus is empty, replace with the Family NOTE: this used to work but the syntax is broken for unknown reasons
+# sigtab.df$Genus[is.na(sigtab.df$Genus)] <- sigtab.df$Family[is.na(sigtab.df$Genus)]
+
+# if the Genus is empty, replace with the Family NOTE: works as of Feb 2020
+sigtab$Genus = ifelse(is.na(sigtab$Genus), paste(sigtab$Family),paste(sigtab$Genus));sigtab
+
+# OPTIONAL bind Genus and Species together - only works if you had species-level taxonomy AND you added it a few steps prior
+sigtab$Genus.species <- paste(sigtab$Genus, sigtab$Species)
+# I ran this but it doesn't change the plot
+
+
+## graph differential abundance
+ggplot(sigtab, aes(y = Genus, x = log2FoldChange, color = Phylum)) + #play with aesthetics to make graph informative
+  geom_vline(xintercept = 0.0, color = "gray", linewidth = 0.5) +
+  geom_point(aes(size = baseMean)) + #scale size by mean relative abundance
+  theme(axis.text.x = element_text(hjust = 0, vjust = 0.5, size = 10), 
+        axis.text.y = element_text(size = 10)) + 
+  xlab("log2 Fold Change") + 
+  labs(size = "Mean Sequence Abundance",
+       title = "Fold Change of Read Abundance",
+       subtitle = "Antibiotic-treated Compared to Control Group") + 
+  theme_minimal()
 
 ## Done up to here -----------

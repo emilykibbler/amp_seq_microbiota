@@ -18,6 +18,7 @@ normal_stats <- function(ps) {
   df <- estimate_richness(ps, measures = c("Observed", "Shannon")) 
   # # measure evenness for each sample
   even <- df$Shannon/log(df$Observed)
+  # sd is sample data here not standard deviation
   rar_sd = as(sample_data(ps), "matrix")
   rar_sd = as.data.frame(rar_sd)
   result_df <- cbind(df, even, rar_sd)

@@ -1,7 +1,6 @@
 # 5. Optional: search for strings in your data
 
 search_strings <- function(bases, fastq_dot_gz) {
-  library(Biostrings)
   ## specify one file name to look through
   DNA_to_read <- readDNAStringSet(fastq_dot_gz, format = "fastq", with.qualities = TRUE) # FIXME
   # count the number of different nucleotides

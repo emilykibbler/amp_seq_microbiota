@@ -86,6 +86,7 @@ load_libraries <- function() {
   library(conover.test)
   library(asbio)
   library(microbiome)
+  library(DESeq2)
   
   #plotting
   library(RColorBrewer)
@@ -101,6 +102,5 @@ load_libraries <- function() {
   # Too gay to function without the tidyverse, as they say
   library(tidyverse) 
 }
-
 
 
