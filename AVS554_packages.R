@@ -1,12 +1,15 @@
+# This whole repo should be a proper library with dependencies
+# I am aware that load_libraries() is not an ideal way to do it
+# don't @ me in the github comments
+# I'm doing my best and learning as I go
+
 install_necessary <- function() {
   # Lab 1
   if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
   BiocManager::install("dada2")
-  
-  #this one can be installed directly by R
-  install.packages("tidyverse") # graphics package 
-  
+
+  install.packages("tidyverse") 
   # install devtools which will allow you to install the package from GitHub
   install.packages("devtools")
   install_github("labbcb/Rqc")
@@ -44,6 +47,11 @@ install_necessary <- function() {
   
   install.packages("asbio")
   install.packages("microbiome")
+  
+  install.packages('vegan3d')
+  install.packages('scatterplot3d')
+
+  # library(vegan)
 
   
 }
@@ -60,8 +68,10 @@ install_optional <- function() {
   install.packages("ggtext")
   install.packages("remotes")
   remotes::install_github("twbattaglia/btools")
-  if (!require(devtools)) install.packages("devtools")
+  # if (!require(devtools)) install.packages("devtools")
   devtools::install_github("gaospecial/ggVennDiagram")
+  
+  install_github("vqv/ggbiplot")
 }
 
 
@@ -87,6 +97,14 @@ load_libraries <- function() {
   library(asbio)
   library(microbiome)
   library(DESeq2)
+
+  library(plyr)
+
+  library(magrittr)
+
+  library(knitr)
+  library(randomForest)
+  library(rfPermute)
   
   #plotting
   library(RColorBrewer)
@@ -97,6 +115,12 @@ load_libraries <- function() {
   library(RColorBrewer)
   library(corrplot)
   library(viridis)
+  require(scales)
+  require(grid)
+  require(reshape2)
+  library(ggbiplot)
+  library(vegan3d)
+  library(scatterplot3d)
   
   # Load tidyverse last so it has final say in masking functions
   # Too gay to function without the tidyverse, as they say

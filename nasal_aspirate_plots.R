@@ -66,6 +66,8 @@ ggplot(plotData, aes(x = type, y = as.numeric(totals))) +
   ggtitle("Reads by filtering step")
 ggsave("reads_sample_type_QC_status.png")
 
+
+
 ## Dirty alpha diversity plot --------
 #FIXME!!!!!!! Weird stuff is happening!
 phylo <- readRDS("phylo.rds")
@@ -130,6 +132,19 @@ ggarrange(plotlist = list(p1, p2, p3),
   annotate_figure(top = text_grob("Before cleaning alpha diversity plots", size = 16))
 
 ggsave("dirty_diversity_panel_plot.png")
+
+## Dirty ordination plot ----
+phylo_ord <- ordinate(phylo, #calculate similarities
+                      method = "PCoA", #ordination type
+                      "jaccard", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted)
+
+plot_ordination(phylo, phylo_ord, type = "samples", color = "Group") +
+  geom_point(size = 2.5) +
+  scale_color_hue(name = "Sample group", labels = c("Negative control", "No antibiotics", "Antibiotics")) +
+  theme(panel.border = element_rect(color = "gray", fill = NA, size = 1),
+        legend.position = "top") +
+  ggtitle("Ordination plot, pre-clean")
+ggsave("ordination_before_plot.png") # save this graph for later
 
 ## Richness considering syndrome -------------
 phylo_decontam_rar <- readRDS("phylo_decontam_rar")
@@ -682,3 +697,44 @@ ggarrange(plotlist = list(p1, p2, p3),
           legend = "bottom")# %>%
 # annotate_figure(top = text_grob("Before cleaning alpha diversity plots", size = 16))
 ggsave("vertical_core_SV_heatmaps.png")
+
+## DEseq plot -----
+sigtab <- readRDS("sigtab.rds")
+ggplot(sigtab, aes(y = Genus, x = log2FoldChange, color = Phylum)) + #play with aesthetics to make graph informative
+  geom_vline(xintercept = 0.0, color = "gray", linewidth = 0.5) +
+  geom_point(aes(size = baseMean)) + #scale size by mean relative abundance
+  theme(axis.text.x = element_text(hjust = 0, vjust = 0.5, size = 10), 
+        axis.text.y = element_text(size = 10)) + 
+  xlab("log2 Fold Change") + 
+  labs(size = "Mean Sequence Abundance",
+       title = "Fold Change of Read Abundance",
+       subtitle = "Antibiotic-treated Compared to Control Group") + 
+  theme_minimal()
+ggsave("deseq_fc_analysis.png")
+
+## Beta ordination ------
+### PCOA -----
+uJ_pcoa <- readRDS("uJ_pcoa.rds")
+
+plot_ordination(phylo_decontam_rar, uJ_pcoa, type = "samples") + #CHANGE ME
+  geom_point(aes(color = as.factor(Group))) + # resize the points based on a numeric factor, and make light/dark based on another factor
+  # theme_minimal() +
+  theme(panel.border = element_rect(color = "gray", fill = NA, size = 1),
+        legend.position = "bottom") +
+  # scale_color_viridis(discrete = TRUE, option = "A", begin = 0, end = 0.75) + #begin/end indicates where on the color scale to use, A refers to 'magma' color palette
+  stat_ellipse(aes(group = as.factor(Group))) + #add circles around a particular grouping, and make the circle lines different
+  labs(color = "Treatment group",
+       title = "Ordination",
+       subtitle = "After cleaning and rarifaction") #rename the headers in the legend
+ggsave("pcoa_ordination_after_clean_and_rar_with_circles.png")
+
+### NMDS ------
+uJ_nmds <- readRDS("uJ_nmds.rds")
+plot_ordination(phylo_decontam_rar, uJ_nmds, type = "samples", color = "Group") + #CHANGE ME
+  geom_point(aes(color = Group)) +
+  # geom_point(aes(size = as.numeric(Weight_kg), color=as.factor(Week), alpha = as.factor(Week))) + # resize the points based on a numeric factor, and make light/dark based on another factor
+  # scale_color_viridis(discrete = TRUE, option="A", begin = 0, end = 0.75) + #begin/end indicates where on the color scale to use, A refers to 'magma' color palette
+  stat_ellipse(aes(group = Group, linetype = Group)) + #add circles around a particular grouping, and make the circle lines different
+  ggtitle("NMDS Ordination") #+
+# labs(color = "Weeks 0 to 2", size = "Weight in kg", shape = "Diet", linetype="Diet", alpha= "Week") #rename the headers in the legend
+ggsave("nmds_ordination_after_clean_and_rar_with_circles.png")

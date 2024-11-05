@@ -315,19 +315,7 @@ phylo_ord <- ordinate(phylo, #calculate similarities
                       method = "PCoA", #ordination type
                       "jaccard", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted)
 
-# If all the negatives are eliminated by filter and trim:
-  # phylo_ord <- ordinate(prune_samples(sample_sums(phylo) > 0, phylo), #calculate similarities
-  #                       method = "PCoA", #ordination type
-  #                       "jaccard", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted)
-
-
-plot_ordination(phylo, phylo_ord, type = "samples", color = "Group") +
-  geom_point(size = 2.5) +
-  scale_color_hue(name = "Sample group", labels = c("Negative control", "No antibiotics", "Antibiotics")) +
-  theme(panel.border = element_rect(color = "gray", fill = NA, size = 1),
-        legend.position = "top") +
-  ggtitle("Ordination plot, pre-clean")
-ggsave("ordination_before_plot.png") # save this graph for later
+# See plotting script
 
 # Initial clustering by extraction/sequencing batch or confounding variables implies contamination issues (see next section)
 # Horse-shoe patterns indicate underlying patterns to the data
@@ -800,102 +788,44 @@ phylo_decontam_rar_rich_df <- readRDS("phylo_decontam_rar_rich_df.rds") # this c
 
 # select to top 15 most abundant SVs from your phyloseq object and extract to a dataframe
 #take out top 100 taxa based on abundance
-top100OTUs = names(sort(taxa_sums(phylo_decontam_rar), TRUE)[1:100])
-top100 = prune_taxa(top100OTUs, phylo_decontam_rar)
-
-# combine with your metadata and create one dataframe object. you can include other info that you created for a previous dataframe, as long as those objects are still in your R environment. Reminder, you can only use numeric data in a correlation matrix, so you will have to drop certain columns or make them numeric instead.
-# Coerce to data.frame and add the metadata for these samples
-top100_sd = as(otu_table(top100, taxa_are_rows = FALSE), "matrix")
-top100_sd = as.data.frame(top100_sd)
-
-# add Genus names in place of the full sequence name that is in the SV columns
-top100_tax <- as.data.frame(tax_table(top100))
-## if the Genus is empty, replace with the Family
-top100_tax$Genus[is.na(top100_tax$Genus)] <- top100_tax$Family[is.na(top100_tax$Genus)]
-colnames(top100_sd) = top100_tax$Genus
-
-# paste all the components together
-# top100_decontam_rar_corr_df <- cbind(top100_sd, phylo_decontam_rar_rich, phylo_decontam_rar_rich, phylo_decontam_rar_sd)
-
-top100_decontam_rar_corr_df <- cbind(top100_sd, phylo_decontam_rar_rich_df)
+top100_decontam_rar_corr_df <- create_top_N_corr_df(phylo_decontam_rar, 100, phylo_decontam_rar_rich_df) # see lab9_functions
 # check header to make sure it looks good
 head(top100_decontam_rar_corr_df)
+# Top 100 don't all have reads
 
-# # change any column factor names to make them prettier
-# names(EX_ps_clean.rar.corr.df)[names(EX_ps_clean.rar.corr.df) == "EX_ps_clean.rar.even"] <- "Evenness"
-# 
-# # check header to make sure it looks good
-# head(EX_ps_clean.rar.corr.df)
-# 
-# # for example, drop a column with factorial data
-# EX_ps_clean.rar.corr.df <- subset(EX_ps_clean.rar.corr.df, select = -c(Treatment, Diet, Sheep_ID, ICTERIC_INDEX, LIPEMIC_INDEX))
-# 
-# # check header to make sure it looks good
-# head(EX_ps_clean.rar.corr.df)
-# 
-# # check that all remaining columns are numeric instead of factor or character
-# str(EX_ps_clean.rar.corr.df)
-
-# clean up any columns which are not registering as numeric
-# EX_ps_clean.rar.corr.df <- sapply(EX_ps_clean.rar.corr.df, as.numeric)
 
 # This is from browsing the metadata
-numeric_columns <- c("Age", "Birth_weight", "Gestational_age", "House_surface", "Breastfeeding_time", "Pneumococcal_load", "Fever_time_before_sampling", "C_reactive_protein" , "Hemoglobin", "Leukocytes", "Hospitalization_days" )
-colnames(top100_decontam_rar_corr_df)
-sapply(top100_decontam_rar_corr_df, class)
-top100_decontam_rar_corr_df[,numeric_columns] <- sapply(top100_decontam_rar_corr_df[numeric_columns],as.numeric)
-sapply(top100_decontam_rar_corr_df, class)
-numeric_columns <- colnames(top100_decontam_rar_corr_df)[which(as.data.frame(sapply(top100_decontam_rar_corr_df, class))[,1] == "numeric")]
-numeric_columns
+metadata_numeric_columns <- c("Age", "Birth_weight", "Gestational_age", "House_surface", "Breastfeeding_time", "Pneumococcal_load", "Fever_time_before_sampling", "C_reactive_protein" , "Hemoglobin", "Leukocytes", "Hospitalization_days" )
 
+top30_corr_df <- create_top_N_corr_df(phylo_decontam_rar, 30, phylo_decontam_rar_rich_df) # see lab9_functions
+top30_corr_df[,metadata_numeric_columns] <- sapply(top30_corr_df[metadata_numeric_columns],as.numeric)
+numeric_columns <- colnames(top30_corr_df)[which(as.data.frame(sapply(top30_corr_df, class))[,1] == "numeric")]
+sapply(top30_corr_df[,numeric_columns], class)
 
 # alternatively, load a premade dataframe containing your chosen SVs from your sequence table (otu)table in phyloseq) and the metadata you want to include
 # EX_ps_clean.rar.corr.df <- read.csv("example_correlogram_dataframe.csv", check.names = FALSE, header=T, row.names=1)
 
-# confirm that my numeric columns are there
-sapply(top100_decontam_rar_corr_df[,numeric_columns], class)
-head(top100_decontam_rar_corr_df[,numeric_columns])
 # run correlations
-corr_calc <- cor(top100_decontam_rar_corr_df[,numeric_columns],
+corr_calc <- cor(top30_corr_df[,numeric_columns],
                     use = "complete.obs", # use=Specifies the handling of missing data. Options are all.obs (assumes no missing data - missing data will produce an error), complete.obs (listwise deletion), and pairwise.complete.obs (pairwise deletion)
                     method = "spearman") # correlation method=pearson, spearman, or kendall
+# corr.mtest is a custom function written by Dr. Ishaq, see lab9_functions file
+res1 <- cor.mtest(top30_corr_df[,numeric_columns], 0.95)
 
 ### Note, if you have too few samples, you may receive an error about too few observations. 
 # You may ignore the error message, or remove than column
-summary(lm(Observed ~ ., data = top100_decontam_rar_corr_df[, numeric_columns])) 
-# Checking that there are any correlations with p<0.05
 
-which(rapply(list(sapply(top100_decontam_rar_corr_df[,numeric_columns], sum)), is.na))
-# Problem columns: 
-# Birth_weight, Gestational_age, House_surface, Breastfeeding_time, Fever_time_before_sampling, 
-# C_reactive_protein, Hemoglobin, Leukocytes, Hospitalization_days
-View(top100_decontam_rar_corr_df[,numeric_columns][,which(rapply(list(sapply(top100_decontam_rar_corr_df[,numeric_columns], sum)), is.na))])
-# Take out House_surface, idk seems dumb
-analysis_columns <- numeric_columns[numeric_columns != "House_surface"]
-# 406 missing Breastfeeding. B162 missing Breastfeeding. B167 missing Breastfeeding. 
-# B207 missing Fever, CRP, heme, leuk. B90 missing heme and leuk. B96 missing Hosp
-# B112 missing heme and leuk. B141 missing heme. B79 missing BW, GA, breastfeed
-# B346 missing fever time, 414 missing fever time
-# try taking out these samples
-corr_analysis_df <- top100_decontam_rar_corr_df[, analysis_columns]
-remove_me <- c("406", "B162", "B167", "B207", "B90", "B96", "B112", "B141", "B79", "B346", "414") # we are getting rid of 11 out of 75 samples, not great
-corr_analysis_df <- corr_analysis_df[-which(row.names(top100_decontam_rar_corr_df) %in% remove_me),]
-which(rapply(list(sapply(corr_analysis_df, sum)), is.na))
 
-corr_calc <- cor(corr_analysis_df, 
-                 use = "complete.obs", # use=Specifies the handling of missing data. Options are all.obs (assumes no missing data - missing data will produce an error), complete.obs (listwise deletion), and pairwise.complete.obs (pairwise deletion)
-                 method = "spearman") # correlation method=pearson, spearman, or kendall
-# corr.mtest is a custom function written by Dr. Ishaq, see lab9_functions file
-res1 <- cor.mtest(corr_analysis_df,0.95)
 # Note: if you come up with a warning message, 
 # it means that one or more of your columns generated correlations of value 0, which makes it angry.  
 # Visualize the plot, and "?" will come up in those columns.  
 # To fix, remove the column or add a data transformation, to the dataframe you created to make this.  
 # Set the corr.mtest function and run corr.mtest again.
 
-# warning message: over 50 warnings saying In cor(x, y) : the standard deviation is zero
-# FIXME until I can resolve these warnings, I don't think corrplot will work
 # res2 <- cor.mtest(EX_ps_clean.rar.corr.df,0.99)
+
+colnames(res1[[1]]) <- colnames(top30_corr_df[,numeric_columns])
+rownames(res1[[1]]) <- colnames(top30_corr_df[,numeric_columns])
 
 ## plot only those correlations with a significant p-value <0.05, using hierarchical clustering
 corrplot(corr_calc, 
@@ -906,9 +836,8 @@ corrplot(corr_calc,
          sig.level = 0.05, #sets significance cutoff
          insig = "blank", #leaves p > 0.05 blank
          tl.col = "black", # text color
-         tl.cex = .9, #text size
+         tl.cex = .6, #text size
          col = brewer.pal(n = 10, name = "RdYlBu")) #specify a color palette and number of shades needed
-
 
 
 
@@ -999,54 +928,58 @@ ggplot(data = MySummary, aes(x = Group, y = mean_abund)) +
 
 
 
-## Differential Abundance with DESeq ---------------------------------
+## DESeq Differential Abundance  ---------------------------------
 # DESeq only does pairwise comparisons. To make a multifactorial comparison and graph, use "DESeq_and_ternary_plot_example.R".  You can also subset your data
 
 packageVersion("DESeq2")
 
 phylo_decontam_with_species <- readRDS("phylo_decontam_with_species.rds")
-phylo_decontam_with_species_exp_samples <- subset_and_trim(phylo_decontam_with_species, "Sample_type", "experimental") #CHANGE ME 
+# The negative controls are in this cleaned but un-rarefied data set
+# take those out
+phylo_decontam_with_species_exp_samples <- subset_and_trim(phylo_decontam_with_species, "Sample_type", "experimental")  
 
+# sample_data(phylo_decontam_with_species_exp_samples)$Group <- factor(sample_data(phylo_decontam_with_species_exp_samples)$Group, 
+#                                                 levels = c("IPD_ATB", "IPD"), 
+#                                                 labels = c("Antibiotics", "No antibiotics")) 
 sample_data(phylo_decontam_with_species_exp_samples)$Group <- factor(sample_data(phylo_decontam_with_species_exp_samples)$Group, 
-                                                levels = c("IPD_ATB", "IPD"), 
-                                                labels = c("Antibiotics", "No antibiotics")) 
+                                                                     levels = c("IPD", "IPD_ATB"), 
+                                                                     labels = c("No_antibiotics", "Antibiotics")) 
+saveRDS(phylo_decontam_with_species_exp_samples, "phylo_decontam_with_species_exp_samples.rds")
 
-
-# subset_and_trim <- function(starting_object, category, subset_on)
 
 # OPTIONAL if you need to subset 
-atb_decontam <- subset_and_trim(phylo_decontam_with_species_exp_samples, "Group", "Antibiotics")
-no_atb_decontam <- subset_and_trim(phylo_decontam_with_species_exp_samples, "Group", "No antibiotics")
-# A little confused, I made these subsets but didn't use them
-# Maybe this is for if you have more than one factor?
+  # atb_decontam <- subset_and_trim(phylo_decontam_with_species_exp_samples, "Group", "Antibiotics") # subset and trim is in lab5_functions
+  # no_atb_decontam <- subset_and_trim(phylo_decontam_with_species_exp_samples, "Group", "No antibiotics")
+  # # A little confused; I made these subsets but didn't use them
+  # # Maybe this is for if you have more than one factor?
 
 
 # grab phyloseq data for use in deseq
-diagdds = phyloseq_to_deseq2(phylo_decontam_with_species_exp_samples, ~ Group) #CHANGE ME to an factor with only 2 levels
+diagdds = phyloseq_to_deseq2(phylo_decontam_with_species_exp_samples, ~ Group)
 
 # calculate differential abundance
 gm_mean =  function(x, na.rm = TRUE){
   exp(sum(log(x[x > 0]), na.rm = na.rm) / length(x))
 }
 geoMeans = apply(counts(diagdds), 1, gm_mean)
-diagdds = estimateSizeFactors(diagdds, geoMeans = geoMeans)
-diagdds = DESeq(diagdds, fitType = "local")
+diagdds = suppressMessages(estimateSizeFactors(diagdds, geoMeans = geoMeans))
+diagdds = suppressMessages(DESeq(diagdds, fitType = "local"))
 
 # calculate significance for those abundance calculations
-res = results(diagdds)
+res = suppressMessages(results(diagdds))
 res = res[order(res$padj, na.last = NA), ]
 alpha = 0.01
 sigtab = res[(res$padj < alpha), ]
 sigtab = cbind(as(sigtab, "data.frame"), as(tax_table(phylo_decontam_with_species_exp_samples)[rownames(sigtab), ], "matrix")) #CHANGE ME if you didn't subset your data
 
-head(sigtab)
+# head(sigtab)
 
 dim(sigtab) # 17 x 13
-#CHANGE ME number of SVs that were different between them ???
+# number of SVs that were different between them -- 17
 
 
 # calculate log changes and set
-sigtab = sigtab[sigtab[, "log2FoldChange"] < 0, ] #CHANGE ME. use this to select only positive (or negative) log changes
+# sigtab = sigtab[sigtab[, "log2FoldChange"] < 0, ] # If you want only positive (or negative) log changes
 sigtab = sigtab[, c("baseMean", "log2FoldChange", "lfcSE", "padj", "Phylum", "Class", "Family", "Genus")] #CHANGE ME add Order or Species - if you have it
 
 # Phylum order
@@ -1064,23 +997,575 @@ sigtab$Genus = factor(as.character(sigtab$Genus), levels = names(x))
 # sigtab.df$Genus[is.na(sigtab.df$Genus)] <- sigtab.df$Family[is.na(sigtab.df$Genus)]
 
 # if the Genus is empty, replace with the Family NOTE: works as of Feb 2020
-sigtab$Genus = ifelse(is.na(sigtab$Genus), paste(sigtab$Family),paste(sigtab$Genus));sigtab
+sigtab$Genus = ifelse(is.na(sigtab$Genus), paste(sigtab$Family),paste(sigtab$Genus)) # ;sigtab
 
 # OPTIONAL bind Genus and Species together - only works if you had species-level taxonomy AND you added it a few steps prior
-sigtab$Genus.species <- paste(sigtab$Genus, sigtab$Species)
-# I ran this but it doesn't change the plot
+sigtab$Genus.species <- paste(sigtab$Genus, sigtab$Species) # I ran this but it doesn't change the plot
 
+saveRDS(sigtab, "sigtab.rds")
 
 ## graph differential abundance
-ggplot(sigtab, aes(y = Genus, x = log2FoldChange, color = Phylum)) + #play with aesthetics to make graph informative
-  geom_vline(xintercept = 0.0, color = "gray", linewidth = 0.5) +
-  geom_point(aes(size = baseMean)) + #scale size by mean relative abundance
-  theme(axis.text.x = element_text(hjust = 0, vjust = 0.5, size = 10), 
-        axis.text.y = element_text(size = 10)) + 
-  xlab("log2 Fold Change") + 
-  labs(size = "Mean Sequence Abundance",
-       title = "Fold Change of Read Abundance",
-       subtitle = "Antibiotic-treated Compared to Control Group") + 
-  theme_minimal()
+# in separate plot script
+
+
+
+
+## Feature Prediction (Differential Abundance) with Random Forest ---------------------------------
+#  https://rpubs.com/michberr/randomforestmicrobe
+# https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm
+# https://www.rdocumentation.org/packages/randomForest/versions/4.6-12/topics/randomForest
+
+
+# Make a dataframe of training data with OTUs as column and samples as rows, which is the phyloseq OTU table
+
+predictors <- otu_table(phylo_decontam_with_species_exp_samples, taxa_are_rows = FALSE)
+
+dim(predictors)
+# 76 samples, 1884 SVs
+
+# output phyloseq tax table as a dataframe to make it manipulable
+tax.df <- data.frame(tax_table(phylo_decontam_with_species_exp_samples), stringsAsFactors = FALSE)
+
+## if the Genus is empty, replace with the Family
+tax.df$Genus[is.na(tax.df$Genus)] <- tax.df$Family[is.na(tax.df$Genus)]
+
+# bind Genus and Species together
+tax.df$Genus.species <- paste(tax.df$Genus, tax.df$Species)
+
+
+# set column of combined genus and species names as the column names for the predictors, replacing the full SV
+colnames(predictors) <- tax.df$Genus.species
+
+# clean up some of the other taxa info
+colnames(predictors) = gsub("_unclassified", "", colnames(predictors))
+colnames(predictors) = gsub("_Intercertae_Sedis", "", colnames(predictors))
+
+### start here when choosing factors, can reuse the above lines as needed. one example for factorial data, and one for numeric data is provided. select as needed.
+
+# Make one column for our outcome/response variable. Choose which one applies to the thing you want to test, and then follow factorial or numeric through the rest of the code section.
+response <- as.factor(sample_data(phylo_decontam_with_species_exp_samples)$Group) 
+# response <- as.numeric(sample_data(EX_ps_clean)$Numeric_Data) #CHANGE ME
+
+# Combine response and SVs into data frame
+rf.data <- data.frame(response, predictors)
+
+
+# set seed for random number generation reproducibility
+set.seed(2)
+
+# classify for factorial data
+response.pf <- rfPermute(response ~. , data = rf.data, na.action = na.omit, ntree = 500, nrep = 100) #na.omit ignores NAs in data (not tolerated). ntrees is how many forests to build, nreps generates p-value
+
+# or this way for numeric data
+# response.pf <- rfPermute(as.numeric(response) ~. , data = rf.data, na.action = na.omit, ntree= 500, nrep = 100)
+
+print(response.pf)
+# paste the print out here, especially the OOB error. 1-(Out-of-the-box error) = accuracy of your model
+# Antibiotics No antibiotics pct.correct LCI_0.95 UCI_0.95
+# Antibiotics             52              2        96.3     87.3     99.5
+# No antibiotics          16              6        27.3     10.7     50.2
+# Overall                 NA             NA        76.3     65.2     85.3
+saveRDS(response.pf, "response_pf.rds")
+
+# grab which features were labeled "important"
+imp <- importance(response.pf, scale = TRUE)
+
+# Make a data frame with predictor names and their importance
+imp.df <- data.frame(predictors = rownames(imp), imp) 
+
+
+# For factorial data, grab only those features with p-value < 0.05
+imp.sig <- subset(imp.df, MeanDecreaseAccuracy.pval <= 0.05) 
+print(dim(imp.sig))
+# 24 x 9
+
+
+# or For factorial data, sort by importance amount
+imp.sort <- imp.sig[order(imp.sig$MeanDecreaseAccuracy),]
+
+
+
+#create levels to the factor based on SV table
+imp.sort$predictors <- factor(imp.sort$predictors, levels = imp.sort$predictors)
+
+# Select the top so many predictors (more than 50 is a crowded graph)
+imp.top <- imp.sort[1:50, ]
+
+# figure out what they are and name them, otherwise will just be named the full SV
+otunames <- imp.top$predictors
+
+
+# need to grab the abundance data out of the otu_table and make a new data.frame, and add the taxa names back in
+# grab the column names from the otu table that match those in the forest set
+pred.abun.colnum <- which(colnames(rf.data) %in% otunames)
+
+# when you find a match, grad the abudnance data
+pred.abun <- rf.data[,sort(c(pred.abun.colnum))]
+
+# make this into a dataframe for manipulation
+pred.abun.df <- data.frame(pred.abun, stringsAsFactors = FALSE)
+
+# use the row.names (sample names) from the phyloseq object to name the samples in your forest
+row.names(pred.abun.df) <- row.names(sample_data(phylo_decontam_with_species_exp_samples))
+
+
+# set color palette  
+col.bro <- (rainbow(6))
+
+# add white to that color list
+col.bro <- append(col.bro, "#ffffff", after = 6)
+
+# add some factors that you can use to make your graph pretty, as many as you want
+pred.abun.df$Sample <- row.names(sample_data(phylo_decontam_with_species_exp_samples)) #always grab the sample names
+pred.abun.df$Group <- sample_data(phylo_decontam_with_species_exp_samples)$Group 
+# pred.abun.df$FactorB <- sample_data(EX_ps_clean)$FactorB #CHANGE ME
+
 
 ## Done up to here -----------
+# optional, if you want factors to graph in a specific order, you can set that manually, and relabel them so they are more readable in the graph
+# pred.abun.df$Date <- factor(pred.abun.df$Date, levels=c("21_Apr", "12_May", "01_Jun", "22_Jun", "25_Jul"), labels=c("21 Apr", "12 May", "01 Jun", "22 Jun", "25 Jul")) #CHANGE ME
+
+## Troubleshooting ------
+
+# reload these packages in this order, because sometimes the ddply function breaks
+library(plyr)
+library(dplyr)
+# head(pred.abun.df)
+# melt and transform the data using ALL the factors you added
+m <- melt(pred.abun.df, id.vars = c("Sample", "Group"))
+# m$variable <- str_remove_all(m$variable, ".NA")
+# m$variable <- str_replace_all(m$variable, ".NA.", "_") # come back and clean up names later
+head(m)
+saveRDS(m, "m.rds")
+# FIXME
+esk_m <- m
+esk_m$rescale <- log(1 + as.numeric(m$value))
+head(esk_m)
+m <- ddply(m, .(variable), mutate, rescale = log(1 + as.numeric(value))) #NOTE: may need to change it to as.numeric(value) if it tells you an error about non-binary operators. if you go to graph it and it doesn't recognize 'rescale', it means this piece failed.
+# Note to self: ddply and transform is kind of like pivot_longer in the tidyverse
+head(m)
+identical(esk_m, m)
+
+
+# adjusted plot for factorial data, recommend using sample ID as 'factor A' (x value)
+ggplot(esk_m, aes(as.factor(Sample), variable)) + 
+  theme_minimal() + 
+  facet_grid(.~Group, space = "free", scales = "free") + #set up graph facets to separate out levels of FactorA
+  geom_tile(aes(fill = esk_rescale), color = "gray") + #add the heatmap coloring 
+  scale_fill_gradientn(colors = rev(col.bro), na.value = 'white') + #use the preset color palette
+  labs(fill = "Log abundance") + #rename legend heading
+  theme(legend.position = 'bottom',
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_line(size = 2),
+        axis.text.y = element_text(size = 6)) +
+  ylab('Predictor Taxa') +
+  xlab('Sample') 
+
+
+
+## LEFSe ---------------------------------
+# can be done within R using the lefse package
+
+# can transform phyloseq data to lefse-ready format with the command that you create, phyloseq_to_lefse
+# uses code by seahorse001x: https://github.com/seashore001x/Rrumen/blob/master/phyloseq2lefse.R
+
+# require(dplyr)
+# require(tibble)
+# 
+# # this script defines a function to convert phyloseq object into lefse recognized file format. no need to change anything in this bit.
+# phyloseq_to_lefse <- function(physeq){
+#   # aggregate to genus level
+#   ps_lefse <- physeq %>% tax_glom(taxrank = 'Genus', NArm = F)
+#   
+#   # extract taxonomic data from phyloseq object and then stored in a vector called lefse_tax
+#   lefse_tax <- ps_lefse %>% tax_table %>% data.frame(stringsAsFactors=FALSE)
+#   lefse_tax <- replace(lefse_tax, is.na(lefse_tax), 'Unclassified')
+#   lefse_tax <- lefse_tax %>% group_by(Kingdom, Phylum, Class, Order, Family, Genus) %>% mutate(id = paste(Kingdom, Phylum, Class, Order, Family, Genus, sep = "|")) %>% ungroup %>% pull(id)
+#   
+#   # extract otu abundance matrix from phyloseq object and annotated with tax information
+#   lefse_matrix <- otu_table(ps_lefse) %>% data.frame(stringsAsFactors = F) %>% t %>% data.frame
+#    
+#   # bookmark this is what is throwing the error
+# #  colnames(lefse_matrix) <- lefse_tax
+#   
+# #  row.names(lefse_matrix) <- lefse_tax
+#   
+#   # extract sample metadata and order sample same in lefse_matrix
+#   lefse_sample <- sample_data(ps_lefse)
+#   
+#   
+#   # convert factor in lefse_sample into character in order to combine sample and abundance data
+#   lefse_sample_isfactor <- sapply(lefse_sample, is.factor)
+#   lefse_sample[,lefse_sample_isfactor] <- lefse_sample[,lefse_sample_isfactor] %>% lapply(as.character)
+#   lefse_sample <- lefse_sample %>% data.frame
+#   
+#   lefse_table <- full_join(rownames_to_column(lefse_sample), rownames_to_column(lefse_matrix), by = ("rowname" = "rowname")) %>% t
+#   
+#   return(lefse_table)
+# }
+# 
+# 
+# EX_clean_for_lefse <- phyloseq_to_lefse(EX_ps_clean)
+
+
+# If not already in environment, rerun the lines of section starting "feature prediction" up to when colnames(predictors) change
+
+### start here when choosing factors, can reuse the above lines as needed. one example for factorial data, and one for numeric data is provided. select as needed.
+
+# Make one column for our outcome/response variable. Choose which one applies to the thing you want to test, and then follow factorial or numeric through the rest of the code section.
+response.class <- as.factor(sample_data(phylo_decontam_with_species_exp_samples)$Group) #CHANGE ME to the main factor you want to test
+# response.subclass <- as.factor(sample_data(EX_ps_clean)$Week)
+
+subjects <- as.factor(sample_data(phylo_decontam_with_species_exp_samples)$SampleID) # change this to be ID of the individual if animals/environments have repeated measures sampling
+
+# Combine response and SVs into data frame
+# Ex_ps_for_lefse.df <- data.frame(response.class, response.subclass, subjects, predictors)
+phylo_lefse_df <- data.frame(response.class, subjects, predictors)
+
+
+# save this output and upload it to the LEFSe web version on Galaxy: http://huttenhower.sph.harvard.edu/galaxy/
+write.table(phylo_lefse_df, file = "phylo_lefse_df.txt", 
+            append = TRUE, sep = "\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+### Troubleshooting Galaxy -------
+
+
+
+
+#  Lab 11-12: Beta diversity ordinations and stats (Lab 11 and 12) ---------------------------------
+# ordinations in phyloseq: https://joey711.github.io/phyloseq/plot_ordination-examples.html
+
+## PCA  -----------------
+# currently, phyloseq doesn't run a PCA, but you can manually perform one using this tutorial: https://www.datacamp.com/community/tutorials/pca-analysis-r
+
+
+# calculate the components
+phylo_decontam_rar_pca <- prcomp(otu_table(phylo_decontam_rar, taxa_are_rows = FALSE), center = TRUE, scale = TRUE) #CHANGE ME
+
+# take a look
+summary(phylo_decontam_rar_pca) 
+
+# graph it. add ggplot2 text to make it pretty
+ggbiplot(phylo_decontam_rar_pca)
+ggbiplot(phylo_decontam_rar_pca, varname.size = 0, varname.abbrev = TRUE)
+
+
+
+## PCoA in phyloseq -----------------
+
+# use phyloseq to calculate ordination for use in the plot
+uJ_pcoa <- ordinate(phylo_decontam_rar, #calculate similarities
+                       method = "PCoA", #ordination type
+                       "jaccard", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted) but is usually run as binary=FALSE.
+saveRDS(uJ_pcoa, "uJ_pcoa.rds")
+# simple ordination
+plot_ordination(phylo_decontam_rar, uJ_pcoa, type="samples", color="Group") #CHANGE ME but leave type as "samples"
+
+# Detailed plot in the plot script
+  
+
+
+## NMDS in phyloseq -----------------
+
+# use phyloseq to calculate ordination for use in the plot
+uJ_nmds <- ordinate(phylo_decontam_rar, #calculate similarities
+                       method = "NMDS", #ordination type
+                       "jaccard", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted) but is usually run as binary=FALSE.
+
+# report the amount of stress at the end of the NMDS calculation, as it is typical to report that in your manuscript. >0.2 is not great, and >0.3 plot is meaningless
+# Paste output here: Run 20 stress 0.2627185
+saveRDS(uJ_nmds, "uJ_nmds.rds")
+# simple ordination
+plot_ordination(phylo_decontam_rar, uJ_nmds, type = "samples", color = "Group") 
+
+# fancy plot in plot script
+
+
+
+
+### ----- permanova stats for ordinations --------
+
+### Troubleshooting adonis -------
+# Example basic permanova test using Adonis in vegan
+  #FIXME
+  # Other people in class are having the same error
+adonis2(uJ_nmds ~ Group, as(sample_data(phylo_decontam_rar), "data.frame"), permutations = 9999, na.action = na.omit, by = "terms") #CHANGE ME so variable and factor reflect your data
+# paste output here
+
+# Example permanova output
+#             Df  SumsOfSqs MeanSqs F.Model R2      Pr(>F)   
+#   Diet       1    0.6479 0.64792  1.7560 0.07303 0.0047 **
+#   Week       1    0.7136 0.71361  1.9340 0.08044 0.0019 **
+#   Diet:Week  1    0.4997 0.49967  1.3542 0.05632 0.0495 * 
+#   Residuals 19    7.0106 0.36898         0.79021          
+#   Total     22    8.8718                 1.00000          
+# ---
+#   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+# interpretation: The F-model/F statistic is a measure of importance, R2 may not be relevant for factorial data
+
+
+# skipping the following part because my experimental design is not complicated
+    # Or, run a more complicated permanova test using Adonis in vegan if you have a complicated experimental design
+    # if want to add repeated sampling use this line
+    ctrl <- with(as.data.frame(sample_data(EX_ps_clean.rar)), how(blocks = Sheep_ID, nperm = 999))
+    adonis2(EX_uJ_nmds ~ Diet * Week * as.numeric(Weight_kg), data = data.frame(sample_data(EX_ps_clean.rar)), # CHANGE ME so 'Factor' is the name of your Factor variables
+            permutations = ctrl, #for repeated measures
+            # strata = as.data.frame(sample_data(EX_ps_clean.rar))$Blocking_factor #CHANGE ME for replicates/blocks
+    ) 
+    
+    ### NOTE: if adonis is not working and says your data is of the wrong type:
+    # 1) check to make sure you don't have NAs in what you are trying use
+    # 2) update the data.table package, then reload the vegan package
+    # 3) Repeat the ordination calculation by trying the block of code below:
+    
+    # Code to use Vegan to calculation ordination data and run stats, in case phyloseq and vegan aren't sharing code well.
+    # function and tutorial from https://rpubs.com/DKCH2020/587758
+
+veganotu = function(physeq) {
+  require("vegan")
+  OTU = otu_table(physeq)
+  if (taxa_are_rows(OTU)) {
+    OTU = t(OTU)
+  }
+  return(as(OTU, "matrix"))
+}
+# export data from phyloseq to vegan-compatible object
+vegan_otu_table <- veganotu(phylo_decontam_rar)
+
+# make a data frame that can be used in vegan from the sample_data in the phyloseq object
+sampledf <- data.frame(sample_data(phylo_decontam_rar))
+
+# run the ordination calculation, change the variable name from EX_uJ to reflect the calculation method you choose (EX_wBC)
+uJ <- vegdist(wisconsin(sqrt(vegan_otu_table)), method = "jaccard", binary = TRUE) #CHANGE ME to be the method and weighted (binary = false) or unweighted version (binary = true)
+
+adonis2(uJ ~ Group, 
+        sampledf, 
+        permutations = 9999, 
+        na.action = na.omit,
+        by = "terms")
+
+# Output: 
+
+# Permutation test for adonis under reduced model
+# Terms added sequentially (first to last)
+# Permutation: free
+# Number of permutations: 9999
+
+# adonis2(formula = EX_uJ ~ Group, data = as(sample_data(phylo_decontam_rar), "data.frame"), permutations = 9999, na.action = na.omit, by = "terms")
+#           Df SumOfSqs     R2      F Pr(>F)    
+# Group     1    1.042 0.0326 2.4604  1e-04 ***
+# Residual 73   30.909 0.9674                  
+# Total    74   31.950 1.0000                  
+# ---
+#   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+
+# from class chat
+# adonis2(dune ~ Management*A1, data = dune.env, by = "terms")
+
+
+#### run betadispersion test to see how tight/loose the clusters are ----
+# betadisp_EX <- betadisper(EX_uJ_nmds, sampledf$Group) # CHANGE me so variable and factor reflect your data
+betadisp <- betadisper(uJ, sampledf$Group)
+betadisp
+# paste output here
+  # Homogeneity of multivariate dispersions
+  # 
+  # Call: betadisper(d = EX_uJ, group = sampledf$Group)
+  # 
+  # No. of Positive Eigenvalues: 74
+  # No. of Negative Eigenvalues: 0
+  # 
+  # Average distance to median:
+  #   Antibiotics No antibiotics 
+  # 0.6530         0.6095 
+  # 
+  # Eigenvalues for PCoA axes:
+  #   (Showing 8 of 74 eigenvalues)
+  # PCoA1  PCoA2  PCoA3  PCoA4  PCoA5  PCoA6  PCoA7  PCoA8 
+  # 2.6850 1.2362 1.1580 1.0571 0.9137 0.8641 0.7208 0.6437 
+
+
+# run ANOVA to see if clusters overlap or not
+anova(betadisp)
+# paste output here
+  # Analysis of Variance Table
+  # 
+  # Response: Distances
+  # Df   Sum Sq   Mean Sq F value    Pr(>F)    
+  # Groups     1 0.029482 0.0294823  14.329 0.0003123 ***
+  #   Residuals 73 0.150205 0.0020576                      
+  # ---
+  #   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+
+permutest(betadisp)
+# paste output here
+# 
+  # Permutation test for homogeneity of multivariate dispersions
+  # Permutation: free
+  # Number of permutations: 999
+  # 
+  # Response: Distances
+  #             Df   Sum Sq   Mean Sq      F N.Perm Pr(>F)    
+  #  Groups     1 0.029482 0.0294823 14.329    999  0.001 ***
+  # Residuals 73 0.150205 0.0020576                         
+  # ---
+  #   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+
+#  correct for multiple comparisons
+TukeyHSD(betadisp)
+# paste output here
+# Tukey multiple comparisons of means
+# 95% family-wise confidence level
+# 
+# Fit: aov(formula = distances ~ group, data = df)
+# 
+# $group
+#                             diff         lwr         upr      p adj
+# No antibiotics-Antibiotics -0.0435474 -0.06647553 -0.02061927 0.0003123
+
+
+# Lab 13: Beta diversity components (Lab 13) ---------------------------------
+
+# Component analysis perform ordination calculations on your sample data (metadata or environmental data) and on your sequence table data (SVs). Having missing or NA in the datasets may throw an error. Having outliers may distort the plots. 
+
+# optional, if you need to drop samples before creating the plots below, use this:
+# EX_ps_clean.rar_altered = subset_samples(EX_ps_clean.rar, Sample_type == "Mock") # CHANGE ME to the sample to drop
+# EX_ps_clean.rar_altered <- prune_taxa(taxa_sums(EX_ps_clean.rar_altered) > 0, EX_ps_clean.rar_altered)
+
+# optional, use this if you want to convert N/A in your metadata to something else
+# sample_data(EX_ps_clean.rar)$Factor[is.na(sample_data(EX_ps_clean.rar)$Factor)] <- "Something_else" # CHANGE ME so factor and replacement reflect the column you want to search through and what you want to replace NA with 
+
+
+## CCA in phyloseq -------------------------------------------
+# correspondence analysis, or optionally, constrained correspondence analysis (a.k.a. canonical correspondence analysis), usually used with bell-curve or unimodal relationships hypothesis-based testing does not need normally distributed data, but if you have a lot of outliers you may want to consider adding a data transformation.
+
+# first create a distance ordination. BE SURE THERE ARE NO NAs in your factorial data!! If you need to alter something, see the "beta diversity components" section.
+
+# reload as needed
+library(phyloseq)
+library(vegan)
+library(ggplot2)
+
+bray_not_na <- phyloseq::distance(physeq = EX_ps_clean.rar, method = "bray") #CHANGE ME
+
+cca_ord <- ordinate(
+  physeq = EX_ps_clean.rar, #CHANGE ME
+  method = "CCA",
+  distance = bray_not_na,
+  formula = ~ Diet * Week +  # CHANGE ME add factors
+    Condition(Sheep_ID) #CHANGE ME use for repeated measures
+)
+
+cca_ord
+# paste the output here
+
+# Call: cca(formula = OTU ~ Diet + Week, data = data)
+# 
+# Inertia Proportion Rank
+# Total          7.2413     1.0000     
+# Constrained    0.9964     0.1376    2
+# Unconstrained  6.2450     0.8624   20
+# Inertia is scaled Chi-square 
+# 
+# Eigenvalues for constrained axes:
+#   CCA1   CCA2 
+# 0.6864 0.3100 
+# 
+# Eigenvalues for unconstrained axes:
+#   CA1    CA2    CA3    CA4    CA5    CA6    CA7    CA8 
+# 0.9639 0.6452 0.5080 0.4325 0.4097 0.3276 0.3207 0.3114 
+# (Showing 8 of 20 unconstrained eigenvalues)
+
+
+# NOTE: do you have CCA eigenvalues for each of the factors you put in? CCA1 = x axis, and CCA2 = y axis, so if you don't have both of those it will use CA which is the unconstrained axis instead.
+
+
+
+# anova of whole model
+anova(cca_ord, permu=1000)
+# paste the output here    
+# Permutation test for cca under reduced model
+# Permutation: free
+# Number of permutations: 999
+# 
+# Model: cca(formula = OTU ~ Diet + Week, data = data)
+#           Df  ChiSquare F       Pr(>F)    
+# Model     2    0.9964 1.5955  0.001 ***
+# Residual 20    6.2450                  
+# ---
+# Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+
+# anova of the factors (terms) you specified
+anova(cca_ord, by="terms", permu=1000)
+# Permutation test for cca under reduced model
+# Terms added sequentially (first to last)
+# Permutation: free
+# Number of permutations: 999
+# 
+# Model: cca(formula = OTU ~ Diet + Week, data = data)
+#           Df ChiSquare    F   Pr(>F)    
+# Diet      1    0.4152 1.3297  0.058 .  
+# Week      1    0.5812 1.8613  0.001 ***
+# Residual 20    6.2450                  
+# ---
+#   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1             
+
+
+# cca plot with FACTORA in the model
+cca_plot <- plot_ordination(
+  physeq = EX_ps_clean.rar, #CHANGE ME
+  ordination = cca_ord, 
+  color = "Diet", #CHANGE ME
+  axes = c(1,2)) + 
+  theme_minimal() +
+  aes(shape = as.factor(Week)) + #CHANGE ME
+  geom_point(aes(colour = Diet), size = 4) + #CHANGE ME
+  geom_point(colour = "grey90", size = 1.5) 
+
+
+# Now add the environmental variables as arrows
+arrowmat <- vegan::scores(cca_ord, display = "bp")
+
+# Add labels, make a data.frame
+arrowdf <- data.frame(labels = rownames(arrowmat), arrowmat)
+
+# Define the arrow aesthetic mapping
+arrow_map <- aes(xend = CCA1, 
+                 yend = CCA2, 
+                 x = 0, 
+                 y = 0, 
+                 shape = NULL, 
+                 color = NULL, 
+                 label = labels)
+
+label_map <- aes(x = 1.3 * CCA1, 
+                 y = 1.3 * CCA2, 
+                 shape = NULL, 
+                 color = NULL, 
+                 label = labels)
+
+arrowhead = arrow(length = unit(0.02, "npc"))
+
+# Make a new graphic
+cca_plot + 
+  geom_segment(
+    mapping = arrow_map, 
+    linewidth = .5, 
+    data = arrowdf, 
+    color = "gray", 
+    arrow = arrowhead
+  ) + 
+  geom_text(
+    mapping = label_map, 
+    size = 4,  
+    data = arrowdf, 
+    show.legend = FALSE
+  ) 
+
+
+

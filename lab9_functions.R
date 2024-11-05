@@ -18,6 +18,7 @@ cor.mtest <- function(mat, conf.level = 0.95){
   return(list(p.mat, lowCI.mat, uppCI.mat))
 }
 
+
 core_taxa_finder <- function(phylo_input, params) {
   my_file_name <- paste(deparse(substitute(phylo_input)), "core_taxa.csv", sep = "_")
   if (length(params) != 2) {
@@ -58,25 +59,71 @@ core_taxa_finder <- function(phylo_input, params) {
 # paste(deparse(substitute(phylo)), "core_taxa.csv", sep = "_")
 
 
+create_top_N_corr_df <- function(phylo_object, number, rich_df) {
+  topOTUs <- names(sort(taxa_sums(phylo_object), TRUE)[1:number])
+  top <- prune_taxa(topOTUs, phylo_object)
+  
+  top_sd = as(otu_table(top, taxa_are_rows = FALSE), "matrix")
+  top_sd = as.data.frame(top_sd)
+  
+  # add Genus names in place of the full sequence name that is in the SV columns
+  top_tax <- as.data.frame(tax_table(top))
+  ## if the Genus is empty, replace with the Family
+  top_tax$Genus[is.na(top_tax$Genus)] <- top_tax$Family[is.na(top_tax$Genus)]
+  colnames(top_sd) = top_tax$Genus
+  
+  top_corr_df <- cbind(top_sd, rich_df)
+  return(top_corr_df)
+}
+# 
+#   # corrplot requires one dataframe of metadata and/or seqtab data.  Any columns in the dataframe will be correlated against all others.  Too many columns makes the graph unreadable, try to keep it to <50.
+#   
+#   # select to top 15 most abundant SVs from your phyloseq object and extract to a dataframe
+#   #take out top N taxa based on abundance
+#   top100OTUs = names(sort(taxa_sums(phylo_decontam_rar), TRUE)[1:100])
+#   top100 = prune_taxa(top100OTUs, phylo_decontam_rar)
+#   
+#   # combine with your metadata and create one dataframe object. you can include other info that you created for a previous dataframe, as long as those objects are still in your R environment. Reminder, you can only use numeric data in a correlation matrix, so you will have to drop certain columns or make them numeric instead.
+#   # Coerce to data.frame and add the metadata for these samples
+#   top100_sd = as(otu_table(top100, taxa_are_rows = FALSE), "matrix")
+#   top100_sd = as.data.frame(top100_sd)
+#   
+#   # add Genus names in place of the full sequence name that is in the SV columns
+#   top100_tax <- as.data.frame(tax_table(top100))
+#   ## if the Genus is empty, replace with the Family
+#   top100_tax$Genus[is.na(top100_tax$Genus)] <- top100_tax$Family[is.na(top100_tax$Genus)]
+#   colnames(top100_sd) = top100_tax$Genus
+# 
+# # paste all the components together
+# # top100_decontam_rar_corr_df <- cbind(top100_sd, phylo_decontam_rar_rich, phylo_decontam_rar_rich, phylo_decontam_rar_sd)
+# 
+# top100_decontam_rar_corr_df <- cbind(top100_sd, phylo_decontam_rar_rich_df)
+# # check header to make sure it looks good
+# head(top100_decontam_rar_corr_df)
 
+# # change any column factor names to make them prettier
+# names(EX_ps_clean.rar.corr.df)[names(EX_ps_clean.rar.corr.df) == "EX_ps_clean.rar.even"] <- "Evenness"
 # 
+# # check header to make sure it looks good
+# head(EX_ps_clean.rar.corr.df)
 # 
+# # for example, drop a column with factorial data
+# EX_ps_clean.rar.corr.df <- subset(EX_ps_clean.rar.corr.df, select = -c(Treatment, Diet, Sheep_ID, ICTERIC_INDEX, LIPEMIC_INDEX))
 # 
+# # check header to make sure it looks good
+# head(EX_ps_clean.rar.corr.df)
 # 
+# # check that all remaining columns are numeric instead of factor or character
+# str(EX_ps_clean.rar.corr.df)
+
+# clean up any columns which are not registering as numeric
+# EX_ps_clean.rar.corr.df <- sapply(EX_ps_clean.rar.corr.df, as.numeric)
 # 
-# 
-# 
-# # graph the abundance of those shared taxa, here are some example: https://microbiome.github.io/tutorials/Core.html
-# 
-# #aggregate the genera so we don't get a lot of lines separating all the SVs
-# plot.gen <- aggregate_taxa(phylo.coreW, "Genus")
-# 
-# prevalences <- seq(.05, 1, .05)
-# detections <- round(10^seq(log10(1e-4), log10(.2), length = 10), 3)
-# 
-# plot_core(plot.gen, 
-#           plot.type = "heatmap", 
-#           prevalences = prevalences, 
-#           detections = detections, min.prevalence = .5) + #CHANGE min prevalence
-#   xlab("Detection Threshold (Relative Abundance (%))") + ylab("Bacterial SVs") +
-#   theme_minimal() + scale_fill_viridis()
+# # This is from browsing the metadata
+# numeric_columns <- c("Age", "Birth_weight", "Gestational_age", "House_surface", "Breastfeeding_time", "Pneumococcal_load", "Fever_time_before_sampling", "C_reactive_protein" , "Hemoglobin", "Leukocytes", "Hospitalization_days" )
+# colnames(top100_decontam_rar_corr_df)
+# sapply(top100_decontam_rar_corr_df, class)
+# top100_decontam_rar_corr_df[,numeric_columns] <- sapply(top100_decontam_rar_corr_df[numeric_columns],as.numeric)
+# sapply(top100_decontam_rar_corr_df, class)
+# numeric_columns <- colnames(top100_decontam_rar_corr_df)[which(as.data.frame(sapply(top100_decontam_rar_corr_df, class))[,1] == "numeric")]
+# numeric_columns
