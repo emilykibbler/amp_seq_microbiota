@@ -11,22 +11,44 @@ phylo_clean_no_strep_rar <- readRDS('phylo_clean_no_strep_rar.rds')
 phylo_clean_strep_rar <- readRDS('phylo_clean_strep_rar.rds') 
 
 ## Patient metadata ------
-patient_data_correlation_summary <- readRDS("patient_data_correlation_summary.rds")
+patient_data_correlation_summary <- readRDS("numeric_patient_data_correlation_summary.rds")
 
 
-subset(patient_data_correlation_summary, Variable != "Group" & Variable != "SampleID" ) %>%
-  ggplot(aes(y = Variable, x = as.numeric(p.value), size = 2)) +
-  geom_point(aes(color = as.numeric(estimate.cor))) +
-  scale_size(guide = "none") +
-  scale_color_gradient2(low = "blue",high = "red", midpoint = 0) +
-  theme(panel.background = element_rect(fill = "gray"),
-        axis.title.y = element_blank()) +
-  scale_x_continuous(breaks = seq(0, 1, 0.1)) +
-  labs(color = "Correlation coefficient",
-       x = "p-value") +
-  geom_vline(xintercept = 0.05, color = "red") +
-  annotate("text", x = 0.03, y = 20, label = "p = 0.05", angle = 90) +
-  ggtitle("Correlation of patient metrics, treatment group vs control group") 
+p1 <-  subset(patient_data_correlation_summary, Variable != "Group" & Variable != "SampleID" ) %>%
+        ggplot(aes(y = Variable, x = as.numeric(p.value), size = 2)) +
+        geom_point(aes(color = as.numeric(estimate.cor))) +
+        scale_size(guide = "none") +
+        scale_color_gradient2(low = "blue",high = "red", midpoint = 0) +
+        theme(panel.background = element_rect(fill = "gray"),
+              axis.title.y = element_blank()) +
+        scale_x_continuous(breaks = seq(0, 1, 0.1)) +
+        labs(color = "Correlation coefficient",
+             x = "p-value",
+             title = "Correlation of Numeric Patient Metrics",
+             subtitle = "Treatment Group vs Control Group") +
+        geom_vline(xintercept = 0.05, color = "red") +
+        annotate("text", x = 0.03, y = 10, label = "p = 0.05", angle = 90)
+ggsave("numeric_correlation_patient_metrics.png")
+
+chisq_summary <- readRDS("chisq_summary.rds")
+
+p2 <-  subset(chisq_summary, variable != "Group" & variable != "SampleID" ) %>%
+        ggplot(aes(y = variable, x = as.numeric(p.value), size = 2)) +
+        geom_point(aes(color = as.numeric(`statistic.X-squared`))) +
+        scale_size(guide = "none") +
+        scale_color_gradient2(low = "blue",high = "red", midpoint = 0) +
+        theme(panel.background = element_rect(fill = "gray"),
+              axis.title.y = element_blank()) +
+        scale_x_continuous(breaks = seq(0, 1, 0.1)) +
+        labs(color = "X-squared",
+             x = "p-value",
+             title = "Correlation of Categorical Patient Metrics",
+             subtitle = "Treatment Group vs Control Group") +
+        geom_vline(xintercept = 0.05, color = "red") +
+        annotate("text", x = 0.03, y = 25, label = "p = 0.05", angle = 90)
+ggsave("categorical_correlation_patient_metrics.png")
+
+ggarrange(plotlist = list(p1, p2), labels = c("A", "B"), nrow = 2, ncol = 1, heights = c(1, 1.25))
 ggsave("correlation_patient_metrics.png")
 
 ## Plot QC steps ------------------
@@ -637,7 +659,7 @@ for (i in 1:length(classes_to_plot)) {
 
 ## Core SVs ------
 
-
+### Heat maps ------
 
 phylo.coreW <- readRDS("phylo.coreW.rds")
 atb_phylo.coreW <- readRDS("atb_phylo.coreW.rds")
@@ -697,6 +719,149 @@ ggarrange(plotlist = list(p1, p2, p3),
           legend = "bottom")# %>%
 # annotate_figure(top = text_grob("Before cleaning alpha diversity plots", size = 16))
 ggsave("vertical_core_SV_heatmaps.png")
+
+# Again with stricter criteria
+
+phylo.coreW_35 <- readRDS("phylo.coreW_35.rds")
+atb_phylo.coreW_35 <- readRDS("atb_phylo.coreW_35.rds")
+no_atb_phylo.coreW_35 <- readRDS("no_atb_phylo.coreW_35.rds")
+
+#aggregate the genera so we don't get a lot of lines separating all the SVs
+plot.gen <- aggregate_taxa(phylo.coreW_35, "Genus")
+
+prevalences <- seq(.05, 1, .05)
+detections <- round(10^seq(log10(1e-4), log10(.2), length = 10), 3)
+
+p1 <- plot_core(plot.gen, 
+                plot.type = "heatmap", 
+                prevalences = prevalences, 
+                detections = detections, min.prevalence = 1/10000) + 
+  xlab("Detection Threshold (Relative Abundance (%))") +
+  ylab("Bacterial SVs") +
+  theme_minimal() + scale_fill_viridis() +
+  ggtitle("Core SVs, All Patients")
+
+atb_plot.gen <- aggregate_taxa(atb_phylo.coreW_35, "Genus")
+
+p2 <- plot_core(atb_plot.gen, 
+                plot.type = "heatmap", 
+                prevalences = prevalences, 
+                detections = detections, min.prevalence = 1/10000) + 
+  xlab("Detection Threshold (Relative Abundance (%))") +
+  ylab("Bacterial SVs") +
+  theme_minimal() + scale_fill_viridis() +
+  ggtitle("Core SVs, Antibiotics")
+
+no_atb_plot.gen <- aggregate_taxa(no_atb_phylo.coreW_35, "Genus")
+
+p3 <- plot_core(no_atb_plot.gen, 
+                plot.type = "heatmap", 
+                prevalences = prevalences, 
+                detections = detections, min.prevalence = 1/10000) + 
+  xlab("Detection Threshold (Relative Abundance (%))") +
+  ylab("Bacterial SVs") +
+  theme_minimal() + scale_fill_viridis() +
+  ggtitle("Core SVs, No Antibiotics")
+
+ggarrange(plotlist = list(p1, p2, p3),
+          # labels = c("A", "B", "C"),
+          common.legend = TRUE,
+          nrow = 1,
+          ncol = 3,
+          legend = "bottom")# %>%
+# annotate_figure(top = text_grob("Before cleaning alpha diversity plots", size = 16))
+ggsave("35prev_horizontal_core_SV_heatmaps.png")
+
+ggarrange(plotlist = list(p1, p2, p3),
+          # labels = c("A", "B", "C"),
+          common.legend = TRUE,
+          nrow = 3,
+          ncol = 1,
+          legend = "bottom")# %>%
+# annotate_figure(top = text_grob("Before cleaning alpha diversity plots", size = 16))
+ggsave("35prev_vertical_core_SV_heatmaps.png")
+
+ ### Box plot -------
+
+
+amalgamate_SV_data <- function(input_otu_table, group_name){
+  df <- data.frame(matrix(nrow = nrow(input_otu_table), ncol = 3))
+  colnames(df) <- c("SV", "Group", "Abundance")
+  for (i in 1:ncol(input_otu_table)) {  
+    temp <- data.frame(matrix(nrow = nrow(input_otu_table), ncol = 3))
+    colnames(temp) <- c("SV", "Group", "Abundance")
+    temp$SV <- colnames(input_otu_table)[i]
+    temp$Group <- group_name
+    temp$Abundance <- as.data.frame(input_otu_table)[,i]
+    df <- rbind(df, temp)
+  }
+  return(df)
+}
+
+dat <- data.frame(matrix(nrow = 0, ncol = 3))
+colnames(dat) <- c("SV", "Group", "Abundance")
+dat <- rbind(dat, amalgamate_SV_data(atb_phylo.coreW@otu_table, "Antibiotics"))
+dat <- rbind(dat, amalgamate_SV_data(no_atb_phylo.coreW@otu_table, "No antibiotics"))
+
+head(dat)
+
+temp <- as.data.frame(atb_phylo.coreW@tax_table)
+temp$SV <- row.names(temp)
+dat <- left_join(dat, temp, by = "SV")
+
+subset(dat, !is.na(Genus)) %>% 
+  subset(Phylum != "Campylobacterota" & Phylum != "Actinobacteriota") %>%
+  subset(Genus != "Undefined") %>%
+  ggplot(aes(x = SV, y = Abundance, color = Genus)) +
+  geom_boxplot() +
+  facet_grid(cols = vars(Phylum), rows = vars(Group), scales = "free", space = "free") +
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom") +
+  ggtitle("Core SVs")
+
+
+dat <- data.frame(matrix(nrow = 0, ncol = 3))
+colnames(dat) <- c("SV", "Group", "Abundance")
+dat <- rbind(dat, amalgamate_SV_data(atb_phylo.coreW_35@otu_table, "Antibiotics"))
+dat <- rbind(dat, amalgamate_SV_data(no_atb_phylo.coreW_35@otu_table, "No antibiotics"))
+# length(unique(colnames(atb_phylo.coreW_35@otu_table)))
+# length(unique(dat$SV))
+# head(dat)
+# dim(dat)
+
+temp <- as.data.frame(atb_phylo.coreW_35@tax_table)
+temp$SV <- row.names(temp)
+dat <- left_join(dat, temp, by = "SV")
+dim(dat)
+
+subset(dat, !is.na(Genus)) %>% 
+  ggplot(aes(x = SV, y = Abundance, color = Genus)) +
+  geom_boxplot() +
+  facet_grid(cols = vars(Phylum), rows = vars(Group), scales = "free", space = "free") +
+  theme(axis.text.x = element_blank(),
+        legend.position = "top") +
+  labs(title = "Core SVs",
+       subtitle = "Frequency > 1/10,000; Prevalence > 0.35")
+ggsave("core_SVs_top_15.png")
+### Venn diagrams -----
+
+atb_phylo.coreW
+no_atb_phylo.coreW
+
+core_atb_SVs <- row.names(as.data.frame(atb_phylo.coreW@tax_table))
+core_atb_genus <- as.data.frame(atb_phylo.coreW@tax_table)$Genus
+core_no_atb_SVs <- row.names(as.data.frame(no_atb_phylo.coreW@tax_table))
+core_no_atb_genus <- as.data.frame(no_atb_phylo.coreW@tax_table)$Genus
+
+list(
+  Antibiotics = core_atb_genus,
+  No_Antibiotics = core_no_atb_genus
+) %>%
+  ggVennDiagram( set_size = 3) +
+  scale_x_continuous(expand = expansion(mult = 0.2)) +
+  theme(plot.title = element_text(face = "bold", size = 16)) +
+  ggtitle("Core SVs by Genus")
+
 
 ## DEseq plot -----
 sigtab <- readRDS("sigtab.rds")

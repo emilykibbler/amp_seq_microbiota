@@ -182,7 +182,7 @@ saveRDS(meta, "meta.rds")
 pts_meta <- subset(meta, Group != "controlneg")
 # single check to make sure I can run this function on categorical data
 cor(as.numeric(as.factor(pts_meta[,"Group"])), as.numeric(as.factor(pts_meta[,"Gender"])), method = "kendall") # crushed it
-numeric_columns <- c("Age", "Birth_weight", "Gestational_age", "House_surface", "Breastfeeding_time", "Pneumococcal_load", "Fever_time_before_sampling", "C_reactive_protein" , "Hemoglobin", "Leukocytes", "Hospitalization_days" )
+numeric_columns <- c("Age", "Birth_weight", "Gestational_age", "House_surface", "Breastfeeding_time", "Pneumococcal_load", "Fever_time_before_sampling", "C_reactive_protein" , "Hemoglobin", "Leukocytes", "Hospitalization_days" , "Days_ATB_before_sampling")
 categorical_pt_data <- pts_meta[, !(names(pts_meta) %in% numeric_columns)]
 categorical_pt_data <- subset(categorical_pt_data, select = -Sample_type)
 numeric_pt_data <- pts_meta[, names(pts_meta) %in% c("Group", numeric_columns)]
@@ -190,11 +190,6 @@ numeric_pt_data <- pts_meta[, names(pts_meta) %in% c("Group", numeric_columns)]
 patient_data_correlation_summary <- data.frame(matrix(ncol = 11, nrow = 0))
 colnames(patient_data_correlation_summary) <- c(names(unlist(cor.test(as.numeric(as.factor(meta[,"Group"])), as.numeric(meta[,"Birth_weight"]), method = "pearson", na.action = "na.remove"))), "Variable")
 
-for (i in 1:ncol(categorical_pt_data)) {
-  temp <- subset(categorical_pt_data, !is.na(colnames(categorical_pt_data)[i]))
-  patient_data_correlation_summary[nrow(patient_data_correlation_summary) + 1, ] <-
-    c(unlist(cor.test(as.numeric(as.factor(temp[,"Group"])), as.numeric(as.factor(temp[,i])), method = "pearson")), colnames(categorical_pt_data)[i])
-}
 for (i in 1:ncol(numeric_pt_data)) {
   if (colnames(numeric_pt_data)[i] != "Group") {
   temp <- subset(numeric_pt_data, !is.na(colnames(numeric_pt_data)[i]))
@@ -203,7 +198,22 @@ for (i in 1:ncol(numeric_pt_data)) {
   }
 }
 
-saveRDS(patient_data_correlation_summary, "patient_data_correlation_summary.rds")
+saveRDS(patient_data_correlation_summary, "numeric_patient_data_correlation_summary.rds")
+
+# Chi square for categorical data
+
+# chisq.test(as.factor(categorical_pt_data$Group), as.factor(categorical_pt_data$Ethnicity)) # example for me to check the format of the output
+# unlist(chisq.test(as.factor(categorical_pt_data$Group), as.factor(categorical_pt_data$Ethnicity)))[1:4]
+
+chisq_summary <- data.frame(matrix(nrow = 0, ncol = 5))
+colnames(chisq_summary) <- c("statistic.X-squared", "parameter.df", "p.value", "method", "variable")
+for (i in 1:ncol(categorical_pt_data)) {
+  temp <- subset(categorical_pt_data, !is.na(categorical_pt_data[,i]))
+  chisq_summary[nrow(chisq_summary) + 1, ] <-
+    c(unlist(chisq.test(as.factor(temp[,"Group"]), as.factor(temp[,i])))[1:4], colnames(categorical_pt_data)[i])
+}
+
+saveRDS(chisq_summary, "chisq_summary.rds")
 ### Filtering steps analysis ---------
 # 2.5 check the dimensions of the three data files you need for this to make sure the number of rows matches in each. If they do not, you may need to add/remove rows from your metadata file in case samples were removed/retained from your dataset.
 
@@ -878,6 +888,8 @@ source("~/Desktop/projects/R/AVS_554/lab9_functions.R")
 # identical(test_phylo.coreW, phylo.coreW)
 phylo.coreW <- core_taxa_finder(phylo_decontam_rar, c(1/10000, 25/100))
 saveRDS(phylo.coreW, "phylo.coreW.rds")
+phylo.coreW_35 <- core_taxa_finder(phylo_decontam_rar, c(1/10000, 35/100))
+saveRDS(phylo.coreW_35, "phylo.coreW_35.rds")
 
 prevalences <- seq(.05, 1, .05)
 detections <- round(10^seq(log10(1e-4), log10(.2), length = 10), 3)
@@ -886,11 +898,15 @@ atb_phylo_decontam_rar <- subset_samples(phylo_decontam_rar, Group == "Antibioti
 saveRDS(atb_phylo_decontam_rar, "atb_phylo_decontam_rar.rds")
 atb_phylo.coreW <- core_taxa_finder(atb_phylo_decontam_rar, c(1/10000, 25/100))
 saveRDS(atb_phylo.coreW, "atb_phylo.coreW.rds")
+atb_phylo.coreW_35 <- core_taxa_finder(atb_phylo_decontam_rar, c(1/10000, 35/100))
+saveRDS(atb_phylo.coreW_35, "atb_phylo.coreW_35.rds")
 
 no_atb_phylo_decontam_rar <- subset_samples(phylo_decontam_rar, Group == "No antibiotics")
 saveRDS(no_atb_phylo_decontam_rar, "no_atb_phylo_decontam_rar.rds")
 no_atb_phylo.coreW <- core_taxa_finder(no_atb_phylo_decontam_rar, c(1/10000, 25/100))
 saveRDS(no_atb_phylo.coreW, "no_atb_phylo.coreW.rds")
+no_atb_phylo.coreW_35 <- core_taxa_finder(no_atb_phylo_decontam_rar, c(1/10000, 35/100))
+saveRDS(no_atb_phylo.coreW_35, "no_atb_phylo.coreW_35.rds")
 # Heat maps of the above data can be found in the plot script
 
 
