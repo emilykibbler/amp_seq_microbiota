@@ -5,7 +5,6 @@
 subset_me_bro <- function(starting_object, category, subset_on) {
   search_for <- as.character(get_variable(starting_object, category)) %in% subset_on
   the_subset <- prune_samples(search_for, starting_object)
-  # the_subset <- subset_samples(starting_object, Sample_type %in% subset_on)
   return(the_subset)
 }
 

@@ -72,6 +72,8 @@ install_optional <- function() {
   devtools::install_github("gaospecial/ggVennDiagram")
   
   install_github("vqv/ggbiplot")
+  
+  # install.packages("paletteer")
 }
 
 
@@ -121,6 +123,7 @@ load_libraries <- function() {
   library(ggbiplot)
   library(vegan3d)
   library(scatterplot3d)
+  library(paletteer)
   
   # Load tidyverse last so it has final say in masking functions
   # Too gay to function without the tidyverse, as they say

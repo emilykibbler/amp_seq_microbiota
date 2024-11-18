@@ -886,33 +886,33 @@ source("~/Desktop/projects/R/AVS_554/lab9_functions.R")
 
 # test_phylo.coreW <- core_taxa_finder(phylo_decontam_rar, c(1/10000, 25/100))
 # identical(test_phylo.coreW, phylo.coreW)
-phylo.coreW <- core_taxa_finder(phylo_decontam_rar, c(1/10000, 25/100))
-saveRDS(phylo.coreW, "phylo.coreW.rds")
+phylo.coreW_25 <- core_taxa_finder(phylo_decontam_rar, c(1/10000, 25/100))
+saveRDS(phylo.coreW_25, "phylo.coreW_25.rds")
 phylo.coreW_35 <- core_taxa_finder(phylo_decontam_rar, c(1/10000, 35/100))
 saveRDS(phylo.coreW_35, "phylo.coreW_35.rds")
 
 prevalences <- seq(.05, 1, .05)
 detections <- round(10^seq(log10(1e-4), log10(.2), length = 10), 3)
-
-atb_phylo_decontam_rar <- subset_samples(phylo_decontam_rar, Group == "Antibiotics")
-saveRDS(atb_phylo_decontam_rar, "atb_phylo_decontam_rar.rds")
-atb_phylo.coreW <- core_taxa_finder(atb_phylo_decontam_rar, c(1/10000, 25/100))
-saveRDS(atb_phylo.coreW, "atb_phylo.coreW.rds")
-atb_phylo.coreW_35 <- core_taxa_finder(atb_phylo_decontam_rar, c(1/10000, 35/100))
+atb_phylo.coreW_35 <- subset_samples(phylo.coreW_35, Group == "Antibiotics")
 saveRDS(atb_phylo.coreW_35, "atb_phylo.coreW_35.rds")
-
-no_atb_phylo_decontam_rar <- subset_samples(phylo_decontam_rar, Group == "No antibiotics")
-saveRDS(no_atb_phylo_decontam_rar, "no_atb_phylo_decontam_rar.rds")
-no_atb_phylo.coreW <- core_taxa_finder(no_atb_phylo_decontam_rar, c(1/10000, 25/100))
-saveRDS(no_atb_phylo.coreW, "no_atb_phylo.coreW.rds")
-no_atb_phylo.coreW_35 <- core_taxa_finder(no_atb_phylo_decontam_rar, c(1/10000, 35/100))
+no_atb_phylo.coreW_35 <- subset_samples(phylo.coreW_35, Group == "No antibiotics")
 saveRDS(no_atb_phylo.coreW_35, "no_atb_phylo.coreW_35.rds")
-# Heat maps of the above data can be found in the plot script
+
+# Heat maps and boxplots of the above data can be found in the plot script
 
 
+for (i in 1:ncol(phylo.coreW_35@otu_table)) {
+  print(colnames(atb_phylo.coreW_35@otu_table)[i])
+  print(t.test(atb_phylo.coreW_35@otu_table[,i], no_atb_phylo.coreW_35@otu_table[,i]))
+}
 
-
-
+SVs_sig_diff_on_t_test <- c("GGAATATTGGACAATGGGCGAAAGCCTGATCCAGCCATGCCGCGTGTGTGAAGAAGGCCTTTTGGTTGTAAAGCACTTTAAGTGGGGAGGAAAAGCTTATGGTTAATACCCATAAGCCCTGACGTTACCCACAGAATAAGCACCGGCTAACTCTGTGCCAGCAGCCGCGGTAATACAGAGGGTGCAAGCGTTAATCGGAATTACTGGGCGTAAAGCGCGCGTAGGTGGTTATTTAAGTCAGATGTGAAAGCCCCGGGCTTAACCTGGGAACTGCATCTGATACTGGATAACTAGAGTAGGTGAGAGGGGAGTAGAATTCCAGGTGTAGCGGTGAAATGCGTAGAGATCTGGAGGAATACCGATGGCGAAGGCAGCTCCCTGGCATCATACTGACACTGAGGTGCGAAAGCGTGGGTAGCAAACAG",
+                            "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG",
+                            "GGAATCTTCCGCAATGGGCGAAAGCCTGACGGAGCAACGCCGCGTGAGTGATGAAGGTCTTCGGATCGTAAAACTCTGTTATTAGGGAAGAACAAATGTGTAAGTAACTATGCACGTCTTGACGGTACCTAATCAGAAAGCCACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTGGCAAGCGTTATCCGGAATTATTGGGCGTAAAGCGCGCGTAGGCGGTTTTTTAAGTCTGATGTGAAAGCCCACGGCTCAACCGTGGAGGGTCATTGGAAACTGGAAAACTTGAGTGCAGAAGAGGAAAGTGGAATTCCATGTGTAGCGGTGAAATGCGCAGAGATATGGAGGAACACCAGTGGCGAAGGCGACTTTCTGGTCTGTAACTGACGCTGATGTGCGAAAGCGTGGGGATCAAACAG",
+                            "GGAATATTGCACAATGGGCGCAAGCCTGATGCAGCGACGCCGCGTGGGGGATGACGGCCTTCGGGTTGTAAACTCCTTTCGCCAGGGACGAAGCGTTTTGTGACGGTACCTGGAGAAGAAGCACCGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGGTGCAAGCGTTGTCCGGAATTACTGGGCGTAAAGAGCTCGTAGGTGGTTTGTCACGTCGTCTGTGAAATTCCACAGCTTAACTGTGGGCGTGCAGGCGATACGGGCTGACTTGAGTACTGTAGGGGTAACTGGAATTCCTGGTGTAGCGGTGAAATGCGCAGATATCAGGAGGAACACCGATGGCGAAGGCAGGTTACTGGGCAGTTACTGACGCTGAGGAGCGAAAGCATGGGTAGCAAACAG",
+                            "GGAATATTGCACAATGGGCGCAAGCCTGATGCAGCGACGCCGCGTGGGGGATGACGGCCTTCGGGTTGTAAACTCCTTTCGCCAGGGACGAAGCGTTTTGTGACGGTACCTGGAGAAGAAGCACCGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGGTGCAAGCGTTGTCCGGAATTACTGGGCGTAAAGAGCTCGTAGGTGGTTTGTCACGTCGTCTGTGAAATTCCACAGCTTAACTGTGGGCGTGCAGGCGATACGGGCTGACTTGAGTACTGTAGGGGTAACTGGAATTCCTGGTGTAGCGGTGAAATGCGCAGATATCAGGAGGAACACCGATGGCGAAGGCAGGTTACTGGGCAGTTACTGACGCTGAGGAGCGAAAGCATGGGTAGCAAACAG")
+# in case I got confused and pasted something twice
+SVs_sig_diff_on_t_test <- unique(SVs_sig_diff_on_t_test)
 
 
 # Lab 10: Comparing changes in taxonomy (Lab 10) ---------------------------------
@@ -1137,7 +1137,6 @@ pred.abun.df$Group <- sample_data(phylo_decontam_with_species_exp_samples)$Group
 # pred.abun.df$FactorB <- sample_data(EX_ps_clean)$FactorB #CHANGE ME
 
 
-## Done up to here -----------
 # optional, if you want factors to graph in a specific order, you can set that manually, and relabel them so they are more readable in the graph
 # pred.abun.df$Date <- factor(pred.abun.df$Date, levels=c("21_Apr", "12_May", "01_Jun", "22_Jun", "25_Jul"), labels=c("21 Apr", "12 May", "01 Jun", "22 Jun", "25 Jul")) #CHANGE ME
 
@@ -1448,101 +1447,119 @@ TukeyHSD(betadisp)
 
 # Component analysis perform ordination calculations on your sample data (metadata or environmental data) and on your sequence table data (SVs). Having missing or NA in the datasets may throw an error. Having outliers may distort the plots. 
 
-# optional, if you need to drop samples before creating the plots below, use this:
-# EX_ps_clean.rar_altered = subset_samples(EX_ps_clean.rar, Sample_type == "Mock") # CHANGE ME to the sample to drop
-# EX_ps_clean.rar_altered <- prune_taxa(taxa_sums(EX_ps_clean.rar_altered) > 0, EX_ps_clean.rar_altered)
-
-# optional, use this if you want to convert N/A in your metadata to something else
-# sample_data(EX_ps_clean.rar)$Factor[is.na(sample_data(EX_ps_clean.rar)$Factor)] <- "Something_else" # CHANGE ME so factor and replacement reflect the column you want to search through and what you want to replace NA with 
 
 
 ## CCA in phyloseq -------------------------------------------
-# correspondence analysis, or optionally, constrained correspondence analysis (a.k.a. canonical correspondence analysis), usually used with bell-curve or unimodal relationships hypothesis-based testing does not need normally distributed data, but if you have a lot of outliers you may want to consider adding a data transformation.
+# correspondence analysis, or optionally, constrained correspondence analysis (a.k.a. canonical correspondence analysis),
+# usually used with bell-curve or unimodal relationships hypothesis-based testing does not need normally distributed data,
+#but if you have a lot of outliers you may want to consider adding a data transformation.
 
-# first create a distance ordination. BE SURE THERE ARE NO NAs in your factorial data!! If you need to alter something, see the "beta diversity components" section.
+# first create a distance ordination. BE SURE THERE ARE NO NAs in your factorial data!! - check
+#If you need to alter something, see the "beta diversity components" section.
 
-# reload as needed
-library(phyloseq)
-library(vegan)
-library(ggplot2)
-
-bray_not_na <- phyloseq::distance(physeq = EX_ps_clean.rar, method = "bray") #CHANGE ME
+bray_not_na <- phyloseq::distance(physeq = phylo_decontam_rar, method = "bray") #CHANGE ME
 
 cca_ord <- ordinate(
-  physeq = EX_ps_clean.rar, #CHANGE ME
+  physeq = phylo_decontam_rar, #CHANGE ME
   method = "CCA",
   distance = bray_not_na,
-  formula = ~ Diet * Week +  # CHANGE ME add factors
-    Condition(Sheep_ID) #CHANGE ME use for repeated measures
+  formula = ~ Group +  # CHANGE ME add factors
+    Condition(SampleID) #CHANGE ME use for repeated measures - not sure what that means
 )
 
+
+# Warning message: The model is overfitted with no unconstrained (residual) component
 cca_ord
 # paste the output here
+  # Call: cca(formula = OTU ~ Group + Condition(SampleID), data = data)
+  # 
+  # -- Model Summary --
+  #   
+  #   Inertia Proportion Rank
+  # Total           21.37       1.00     
+  # Conditional     21.37       1.00   74
+  # Unconstrained    0.00       0.00    0
+  # 
+  # Inertia is scaled Chi-square
+  # 
+  # -- Note --
+  #   
+  #   The model is overfitted with no unconstrained (residual) component.
+  # 
+  # -- Eigenvalues --
 
-# Call: cca(formula = OTU ~ Diet + Week, data = data)
-# 
-# Inertia Proportion Rank
-# Total          7.2413     1.0000     
-# Constrained    0.9964     0.1376    2
-# Unconstrained  6.2450     0.8624   20
-# Inertia is scaled Chi-square 
-# 
-# Eigenvalues for constrained axes:
-#   CCA1   CCA2 
-# 0.6864 0.3100 
-# 
-# Eigenvalues for unconstrained axes:
-#   CA1    CA2    CA3    CA4    CA5    CA6    CA7    CA8 
-# 0.9639 0.6452 0.5080 0.4325 0.4097 0.3276 0.3207 0.3114 
-# (Showing 8 of 20 unconstrained eigenvalues)
+# NOTE: do you have CCA eigenvalues for each of the factors you put in? 
+# no, none...
+# CCA1 = x axis, and CCA2 = y axis, so if you don't have both of those it will use CA which is the unconstrained axis instead.
 
+cca_ord <- ordinate(
+  physeq = phylo_decontam_rar, #CHANGE ME
+  method = "CCA",
+  distance = bray_not_na,
+  formula = ~ Group)
+cca_ord
+# ok I think this output seems better
+    # Call: cca(formula = OTU ~ Group, data = data)
+    # 
+    # -- Model Summary --
+    #   
+    #   Inertia Proportion Rank
+    # Total         21.36890    1.00000     
+    # Constrained    0.33920    0.01587    1
+    # Unconstrained 21.02970    0.98413   73
+    # 
+    # Inertia is scaled Chi-square
+    # 
+    # -- Eigenvalues --
+    #   
+    #   Eigenvalues for constrained axes:
+    #   CCA1 
+    # 0.3392 
+    # 
+    # Eigenvalues for unconstrained axes:
+    #   CA1    CA2    CA3    CA4    CA5    CA6    CA7    CA8 
+    # 0.9844 0.9446 0.8419 0.7711 0.7456 0.7144 0.6947 0.6839 
+    # (Showing 8 of 73 unconstrained eigenvalues)
 
-# NOTE: do you have CCA eigenvalues for each of the factors you put in? CCA1 = x axis, and CCA2 = y axis, so if you don't have both of those it will use CA which is the unconstrained axis instead.
-
+# NOTE: do you have CCA eigenvalues for each of the factors you put in? 
+# CCA1 = x axis, and CCA2 = y axis, so if you don't have both of those it will use CA which is the unconstrained axis instead.
 
 
 # anova of whole model
-anova(cca_ord, permu=1000)
-# paste the output here    
-# Permutation test for cca under reduced model
-# Permutation: free
-# Number of permutations: 999
-# 
-# Model: cca(formula = OTU ~ Diet + Week, data = data)
-#           Df  ChiSquare F       Pr(>F)    
-# Model     2    0.9964 1.5955  0.001 ***
-# Residual 20    6.2450                  
-# ---
-# Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+# anova(cca_ord, permu = 1000)
 
 
 # anova of the factors (terms) you specified
-anova(cca_ord, by="terms", permu=1000)
-# Permutation test for cca under reduced model
-# Terms added sequentially (first to last)
-# Permutation: free
-# Number of permutations: 999
-# 
-# Model: cca(formula = OTU ~ Diet + Week, data = data)
-#           Df ChiSquare    F   Pr(>F)    
-# Diet      1    0.4152 1.3297  0.058 .  
-# Week      1    0.5812 1.8613  0.001 ***
-# Residual 20    6.2450                  
-# ---
-#   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1             
+anova(cca_ord, by = "terms", permu = 1000)
+# paste the output here   
+    # Permutation test for cca under reduced model
+    # Terms added sequentially (first to last)
+    # Permutation: free
+    # Number of permutations: 999
+    # 
+    # Model: cca(formula = OTU ~ Group, data = data)
+    # Df ChiSquare      F Pr(>F)  
+    # Group     1    0.3392 1.1774   0.07 .
+    # Residual 73   21.0297                
+    # ---
+    #   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1      
 
 
 # cca plot with FACTORA in the model
 cca_plot <- plot_ordination(
-  physeq = EX_ps_clean.rar, #CHANGE ME
+  physeq = phylo_decontam_rar, #CHANGE ME
   ordination = cca_ord, 
-  color = "Diet", #CHANGE ME
+  color = "Group", #CHANGE ME
   axes = c(1,2)) + 
   theme_minimal() +
-  aes(shape = as.factor(Week)) + #CHANGE ME
-  geom_point(aes(colour = Diet), size = 4) + #CHANGE ME
+  # aes(shape = as.factor(Week)) + #CHANGE ME
+  geom_point(aes(colour = Group), size = 4) + #CHANGE ME
   geom_point(colour = "grey90", size = 1.5) 
+cca_plot
 
+### Ask in class -------
+# above looks kinda crazy...
+# below -- I don't have CCA2, where does it come from?
 
 # Now add the environmental variables as arrows
 arrowmat <- vegan::scores(cca_ord, display = "bp")

@@ -52,7 +52,46 @@ ggarrange(plotlist = list(p1, p2), labels = c("A", "B"), nrow = 2, ncol = 1, hei
 ggsave("correlation_patient_metrics.png")
 
 ## Plot QC steps ------------------
+file_info <- readRDS("file_info.rds")
+# Filtered
+# F
+temp <- list.files(paste0(getwd(), "/", file_info$data_subset[1], "_filtered"), full.names = TRUE)
+temp <- temp[grep("fastq.gz", temp)] # take out non-fastq files
+p1 <- plotQualityProfile(temp, aggregate = TRUE) +
+  ggtitle("Forward Reads")
+print(p1)
 
+# R
+temp <- list.files(paste0(getwd(), "/", file_info$data_subset[2], "_filtered"), full.names = TRUE)
+temp <- temp[grep("fastq.gz", temp)] # take out non-fastq files
+p2 <- plotQualityProfile(temp, aggregate = TRUE) +
+  ggtitle("Reverse Reads")
+
+print(p2)
+ggarrange(plotlist = list(p1, p2), labels = c("A", "B")) %>%
+  annotate_figure(top = text_grob("Filtered Data Quality Plots", size = 16))
+ggsave("filtered_quality_plots.png")
+
+# Raw
+# F
+temp <- file_info[1,]$file_names_full[[1]] # the files we want to analyze for this step
+raw_p1 <- plotQualityProfile(temp, aggregate = TRUE) +
+  ggtitle("Forward Reads")
+print(raw_p1)
+
+# R
+
+temp <- file_info[2,]$file_names_full[[1]] # the files we want to analyze for this step
+raw_p2 <- plotQualityProfile(temp, aggregate = TRUE) +
+  ggtitle("Reverse Reads")
+print(raw_p2)
+
+ggarrange(plotlist = list(raw_p1, raw_p2), labels = c("A", "B")) %>%
+  annotate_figure(top = text_grob("Raw Data Quality Plots", size = 16))
+ggsave("raw_data_qual_plots.png")
+
+
+# Look at read numbers in and out of QC steps
 track <- readRDS('tracked.rds')
 
 plotData <- as.data.frame(track) %>% gather(type, totals, reads.in, filtered, nonchimeras)
@@ -91,9 +130,10 @@ ggsave("reads_sample_type_QC_status.png")
 
 
 ## Dirty alpha diversity plot --------
-#FIXME!!!!!!! Weird stuff is happening!
-phylo <- readRDS("phylo.rds")
 
+phylo <- readRDS("phylo.rds")
+# See below. The plot_richness function has some quirks
+# I found it easier to make a df with estimate_richness and do my own plot from scratch
 plot_richness(phylo, x = "Group",
               measures = c("Observed","Chao1", "Shannon"),
               color = "Group") +
@@ -124,6 +164,7 @@ plot_richness(phylo, x = "Group",
         plot.title = element_text(size = 16, face = "bold")) +
   # scale_x_discrete(labels = c("Negative control", "No antibiotics", "Antibiotics")) +
   ggtitle("Alpha Diversity; Before Data Cleaning")
+
 # ycl6 in the github forum for the phyloseq package recommends using estimate_richness instead of plot_richness
 # for more control over the plot
 # let's try that
@@ -165,11 +206,11 @@ plot_ordination(phylo, phylo_ord, type = "samples", color = "Group") +
   scale_color_hue(name = "Sample group", labels = c("Negative control", "No antibiotics", "Antibiotics")) +
   theme(panel.border = element_rect(color = "gray", fill = NA, size = 1),
         legend.position = "top") +
-  ggtitle("Ordination plot, pre-clean")
+  ggtitle("Ordination Plot, Before Cleaning")
 ggsave("ordination_before_plot.png") # save this graph for later
 
 ## Richness considering syndrome -------------
-phylo_decontam_rar <- readRDS("phylo_decontam_rar")
+phylo_decontam_rar <- readRDS("phylo_decontam_rar.rds")
 plot_richness(phylo_decontam_rar, 
               x = "Syndrome", 
               measures = c("Observed"), #whatever alpha diversity measure you want
@@ -187,10 +228,11 @@ plot_richness(phylo_decontam_rar,
   # xlab("Week") +
   theme(
     plot.title = element_markdown(),
-    plot.subtitle = element_markdown()
+    plot.subtitle = element_markdown(),
+    legend.position = "top"
   ) +
   labs(title = "Nasal aspirate alpha diversity",
-       subtitle = "Decontam<br>Rarefied")
+       subtitle = "Decontaminated<br>Rarefied")
 ggsave("syndrome_plus_observed_richness_plot.png")
 
 plot_richness(phylo_rar, 
@@ -513,6 +555,7 @@ list(
 
 clean_phylo_rarified <- readRDS("clean_phylo_rarified.rds")
 
+
 phylo_clean_rar_atb <- subset_and_trim(clean_phylo_rarified, "Group", "Antibiotics")
 phylo_clean_rar_no_atb <- subset_and_trim(clean_phylo_rarified, "Group", "No antibiotics")
 clean_atb_SVs <- row.names(as.data.frame(phylo_clean_rar_atb@tax_table))
@@ -529,17 +572,18 @@ list(
   ggsave("clean_venn_diagram_SVS_atb_no_atb.png")
 
 list(
-  ATB_clean = clean_atb_SVs,
-  ATB_decon = atb_SVs,
-  No_ATB_clean = clean_no_atb_SVs,
-  No_ATB_decon = no_atb_SVs
+  "Clean, +antibiotics" = clean_atb_SVs,
+  "Decontam, +antibiotics" = atb_SVs,
+  "Clean, -antibiotics" = clean_no_atb_SVs,
+  "Decontam, -antibiotics" = no_atb_SVs
 ) %>%
   ggVennDiagram() +
-    scale_y_continuous(expand = expansion(mult = .2)) +
+    scale_y_continuous(expand = expansion(mult = .1)) +
     scale_x_continuous(expand = expansion(mult = .2)) +
-    theme(plot.title = element_text(face = "bold", size = 16, hjust = 0.5)) +
+    theme(plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+          legend.position = "bottom") +
     ggplot2::scale_fill_gradient(low = "blue",high = "yellow") +
-    ggtitle("SVs -- after decontam/clean and rarification")
+    ggtitle("SVs -- After Decontam/Clean and Rarification")
 ggsave("venn_diagram_clean_decon_SVs.png")
 
 # heat maps
@@ -660,13 +704,13 @@ for (i in 1:length(classes_to_plot)) {
 ## Core SVs ------
 
 ### Heat maps ------
+phylo.coreW_25 <- readRDS("phylo.coreW_25.rds")
 
-phylo.coreW <- readRDS("phylo.coreW.rds")
-atb_phylo.coreW <- readRDS("atb_phylo.coreW.rds")
-no_atb_phylo.coreW <- readRDS("no_atb_phylo.coreW.rds")
+atb_phylo.coreW_25 <- subset_samples(phylo.coreW_25, Group == "Antibiotics")
+no_atb_phylo.coreW_25 <- subset_samples(phylo.coreW_25, Group == "No antibiotics")
 
 #aggregate the genera so we don't get a lot of lines separating all the SVs
-plot.gen <- aggregate_taxa(phylo.coreW, "Genus")
+plot.gen <- aggregate_taxa(phylo.coreW_25, "Genus")
 
 prevalences <- seq(.05, 1, .05)
 detections <- round(10^seq(log10(1e-4), log10(.2), length = 10), 3)
@@ -679,8 +723,9 @@ p1 <- plot_core(plot.gen,
   ylab("Bacterial SVs") +
   theme_minimal() + scale_fill_viridis() +
   ggtitle("Core SVs, All Patients")
+# There's a warning, ignore it
 
-atb_plot.gen <- aggregate_taxa(atb_phylo.coreW, "Genus")
+atb_plot.gen <- aggregate_taxa(atb_phylo.coreW_25, "Genus")
 
 p2 <- plot_core(atb_plot.gen, 
           plot.type = "heatmap", 
@@ -691,7 +736,7 @@ p2 <- plot_core(atb_plot.gen,
   theme_minimal() + scale_fill_viridis() +
   ggtitle("Core SVs, Antibiotics")
 
-no_atb_plot.gen <- aggregate_taxa(no_atb_phylo.coreW, "Genus")
+no_atb_plot.gen <- aggregate_taxa(no_atb_phylo.coreW_25, "Genus")
 
 p3 <- plot_core(no_atb_plot.gen, 
           plot.type = "heatmap", 
@@ -781,11 +826,12 @@ ggarrange(plotlist = list(p1, p2, p3),
 # annotate_figure(top = text_grob("Before cleaning alpha diversity plots", size = 16))
 ggsave("35prev_vertical_core_SV_heatmaps.png")
 
- ### Box plot -------
+ ### Box plots -------
+
 
 
 amalgamate_SV_data <- function(input_otu_table, group_name){
-  df <- data.frame(matrix(nrow = nrow(input_otu_table), ncol = 3))
+  df <- data.frame(matrix(nrow = 0, ncol = 3))
   colnames(df) <- c("SV", "Group", "Abundance")
   for (i in 1:ncol(input_otu_table)) {  
     temp <- data.frame(matrix(nrow = nrow(input_otu_table), ncol = 3))
@@ -800,39 +846,21 @@ amalgamate_SV_data <- function(input_otu_table, group_name){
 
 dat <- data.frame(matrix(nrow = 0, ncol = 3))
 colnames(dat) <- c("SV", "Group", "Abundance")
-dat <- rbind(dat, amalgamate_SV_data(atb_phylo.coreW@otu_table, "Antibiotics"))
-dat <- rbind(dat, amalgamate_SV_data(no_atb_phylo.coreW@otu_table, "No antibiotics"))
-
-head(dat)
-
-temp <- as.data.frame(atb_phylo.coreW@tax_table)
-temp$SV <- row.names(temp)
-dat <- left_join(dat, temp, by = "SV")
-
-subset(dat, !is.na(Genus)) %>% 
-  subset(Phylum != "Campylobacterota" & Phylum != "Actinobacteriota") %>%
-  subset(Genus != "Undefined") %>%
-  ggplot(aes(x = SV, y = Abundance, color = Genus)) +
-  geom_boxplot() +
-  facet_grid(cols = vars(Phylum), rows = vars(Group), scales = "free", space = "free") +
-  theme(axis.text.x = element_blank(),
-        legend.position = "bottom") +
-  ggtitle("Core SVs")
-
-
-dat <- data.frame(matrix(nrow = 0, ncol = 3))
-colnames(dat) <- c("SV", "Group", "Abundance")
 dat <- rbind(dat, amalgamate_SV_data(atb_phylo.coreW_35@otu_table, "Antibiotics"))
+  # length(unique(colnames(atb_phylo.coreW_35@otu_table)))
+  # unique(colnames(atb_phylo.coreW_35@otu_table))
+  # length(unique(dat$SV))
+  # head(dat)
+  # dim(dat)
 dat <- rbind(dat, amalgamate_SV_data(no_atb_phylo.coreW_35@otu_table, "No antibiotics"))
-# length(unique(colnames(atb_phylo.coreW_35@otu_table)))
-# length(unique(dat$SV))
-# head(dat)
-# dim(dat)
+head(dat)
+dim(dat)
 
 temp <- as.data.frame(atb_phylo.coreW_35@tax_table)
 temp$SV <- row.names(temp)
 dat <- left_join(dat, temp, by = "SV")
 dim(dat)
+length(unique(dat$SV))
 
 subset(dat, !is.na(Genus)) %>% 
   ggplot(aes(x = SV, y = Abundance, color = Genus)) +
@@ -842,7 +870,71 @@ subset(dat, !is.na(Genus)) %>%
         legend.position = "top") +
   labs(title = "Core SVs",
        subtitle = "Frequency > 1/10,000; Prevalence > 0.35")
-ggsave("core_SVs_top_15.png")
+ggsave("core_SVs_top_13.png")
+
+p1 <- subset(dat, !is.na(Genus)) %>% 
+        subset(Phylum == "Firmicutes") %>%
+          ggplot(aes(x = SV, y = Abundance, color = Genus)) +
+          geom_boxplot() +
+          scale_color_paletteer_d("tvthemes::Alexandrite") +
+          facet_grid(cols = vars(Phylum), rows = vars(Group), scales = "free", space = "free") +
+          theme(axis.text.x = element_blank(),
+                legend.position = "top",
+                panel.border = element_rect(color = "gray", fill = NA, size = 1))
+SVs_sig_diff_on_t_test <- c("GGAATATTGGACAATGGGCGAAAGCCTGATCCAGCCATGCCGCGTGTGTGAAGAAGGCCTTTTGGTTGTAAAGCACTTTAAGTGGGGAGGAAAAGCTTATGGTTAATACCCATAAGCCCTGACGTTACCCACAGAATAAGCACCGGCTAACTCTGTGCCAGCAGCCGCGGTAATACAGAGGGTGCAAGCGTTAATCGGAATTACTGGGCGTAAAGCGCGCGTAGGTGGTTATTTAAGTCAGATGTGAAAGCCCCGGGCTTAACCTGGGAACTGCATCTGATACTGGATAACTAGAGTAGGTGAGAGGGGAGTAGAATTCCAGGTGTAGCGGTGAAATGCGTAGAGATCTGGAGGAATACCGATGGCGAAGGCAGCTCCCTGGCATCATACTGACACTGAGGTGCGAAAGCGTGGGTAGCAAACAG",
+                            "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG",
+                            "GGAATCTTCCGCAATGGGCGAAAGCCTGACGGAGCAACGCCGCGTGAGTGATGAAGGTCTTCGGATCGTAAAACTCTGTTATTAGGGAAGAACAAATGTGTAAGTAACTATGCACGTCTTGACGGTACCTAATCAGAAAGCCACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTGGCAAGCGTTATCCGGAATTATTGGGCGTAAAGCGCGCGTAGGCGGTTTTTTAAGTCTGATGTGAAAGCCCACGGCTCAACCGTGGAGGGTCATTGGAAACTGGAAAACTTGAGTGCAGAAGAGGAAAGTGGAATTCCATGTGTAGCGGTGAAATGCGCAGAGATATGGAGGAACACCAGTGGCGAAGGCGACTTTCTGGTCTGTAACTGACGCTGATGTGCGAAAGCGTGGGGATCAAACAG",
+                            "GGAATATTGCACAATGGGCGCAAGCCTGATGCAGCGACGCCGCGTGGGGGATGACGGCCTTCGGGTTGTAAACTCCTTTCGCCAGGGACGAAGCGTTTTGTGACGGTACCTGGAGAAGAAGCACCGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGGTGCAAGCGTTGTCCGGAATTACTGGGCGTAAAGAGCTCGTAGGTGGTTTGTCACGTCGTCTGTGAAATTCCACAGCTTAACTGTGGGCGTGCAGGCGATACGGGCTGACTTGAGTACTGTAGGGGTAACTGGAATTCCTGGTGTAGCGGTGAAATGCGCAGATATCAGGAGGAACACCGATGGCGAAGGCAGGTTACTGGGCAGTTACTGACGCTGAGGAGCGAAAGCATGGGTAGCAAACAG",
+                            "GGAATATTGCACAATGGGCGCAAGCCTGATGCAGCGACGCCGCGTGGGGGATGACGGCCTTCGGGTTGTAAACTCCTTTCGCCAGGGACGAAGCGTTTTGTGACGGTACCTGGAGAAGAAGCACCGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGGTGCAAGCGTTGTCCGGAATTACTGGGCGTAAAGAGCTCGTAGGTGGTTTGTCACGTCGTCTGTGAAATTCCACAGCTTAACTGTGGGCGTGCAGGCGATACGGGCTGACTTGAGTACTGTAGGGGTAACTGGAATTCCTGGTGTAGCGGTGAAATGCGCAGATATCAGGAGGAACACCGATGGCGAAGGCAGGTTACTGGGCAGTTACTGACGCTGAGGAGCGAAAGCATGGGTAGCAAACAG")
+dat$signif <- NA
+for (i in 1:nrow(dat)) {
+  if (dat$SV[i] %in% SVs_sig_diff_on_t_test) {
+    dat$signif[i] <- 1
+  }
+}
+          
+p1 <- subset(dat, !is.na(Genus)) %>% 
+  subset(Phylum == "Firmicutes") %>%
+    ggplot() +
+      geom_boxplot(aes(x = SV, y = Abundance, color = Genus)) +
+      geom_point(
+        aes(x = SV, y = signif),
+        shape = "*", 
+        size = 6, 
+        show.legend = FALSE) +
+      ylim(c(0, 1.05)) +
+      scale_color_paletteer_d("tvthemes::Alexandrite") +
+      facet_grid(cols = vars(Phylum), rows = vars(Group), scales = "free", space = "free") +
+      theme(axis.text.x = element_blank(),
+            legend.position = "top",
+            panel.border = element_rect(color = "gray", fill = NA, size = 1))
+
+p1
+
+p2 <- subset(dat, !is.na(Genus)) %>% 
+  subset(Phylum != "Firmicutes") %>%
+    ggplot() +
+      geom_boxplot(aes(x = SV, y = Abundance, color = Genus)) +
+      geom_point(
+        aes(x = SV, y = signif),
+        shape = "*", 
+        size = 6, 
+        show.legend = FALSE) +
+      ylim(c(0, 1.05)) +
+      scale_color_paletteer_d("tvthemes::Alexandrite") +
+      facet_grid(cols = vars(Phylum), rows = vars(Group), scales = "free", space = "free") +
+      theme(axis.text.x = element_blank(),
+            legend.position = "top",
+            panel.border = element_rect(color = "gray", fill = NA, size = 1))
+
+p2
+ggarrange(plotlist = list(p1, p2),
+          # labels = c("A", "B"),
+          nrow = 2,
+          ncol = 1) %>%
+  annotate_figure(top = text_grob("Core SVs: >1/10,000 Frequency and >0.35 Prevalence", 
+                                  size = 19))
+ggsave("top_13_core_SVs_boxplot.png")
 ### Venn diagrams -----
 
 atb_phylo.coreW
@@ -884,22 +976,45 @@ uJ_pcoa <- readRDS("uJ_pcoa.rds")
 plot_ordination(phylo_decontam_rar, uJ_pcoa, type = "samples") + #CHANGE ME
   geom_point(aes(color = as.factor(Group))) + # resize the points based on a numeric factor, and make light/dark based on another factor
   # theme_minimal() +
-  theme(panel.border = element_rect(color = "gray", fill = NA, size = 1),
-        legend.position = "bottom") +
+  theme(panel.border = element_rect(color = "gray", fill = NA, linewidth = 1),
+        legend.position = "top") +
   # scale_color_viridis(discrete = TRUE, option = "A", begin = 0, end = 0.75) + #begin/end indicates where on the color scale to use, A refers to 'magma' color palette
-  stat_ellipse(aes(group = as.factor(Group))) + #add circles around a particular grouping, and make the circle lines different
-  labs(color = "Treatment group",
-       title = "Ordination",
-       subtitle = "After cleaning and rarifaction") #rename the headers in the legend
+  stat_ellipse(aes(group = Group, color = Group)) + #add circles around a particular grouping, and make the circle lines different
+  labs(color = "Treatment Group",
+       title = "PCOA Ordination",
+       subtitle = "After Cleaning and Rarefaction") 
 ggsave("pcoa_ordination_after_clean_and_rar_with_circles.png")
 
 ### NMDS ------
 uJ_nmds <- readRDS("uJ_nmds.rds")
-plot_ordination(phylo_decontam_rar, uJ_nmds, type = "samples", color = "Group") + #CHANGE ME
+plot_ordination(phylo_decontam_rar,
+                uJ_nmds, type = "samples",
+                color = "Group") + #CHANGE ME
   geom_point(aes(color = Group)) +
+  theme(legend.position = "top",
+        panel.border = element_rect(color = "gray", fill = NA, linewidth = 1)) +
   # geom_point(aes(size = as.numeric(Weight_kg), color=as.factor(Week), alpha = as.factor(Week))) + # resize the points based on a numeric factor, and make light/dark based on another factor
   # scale_color_viridis(discrete = TRUE, option="A", begin = 0, end = 0.75) + #begin/end indicates where on the color scale to use, A refers to 'magma' color palette
-  stat_ellipse(aes(group = Group, linetype = Group)) + #add circles around a particular grouping, and make the circle lines different
-  ggtitle("NMDS Ordination") #+
+  stat_ellipse(aes(group = Group, color = Group)) + #add circles around a particular grouping, and make the circle lines different
+  labs(color = "Treatment Group",
+       title = "NMDS Ordination",
+       subtitle = "After Cleaning and Rarefaction") #rename the headers in the legend
+  # ggtitle("NMDS Ordination") #+
 # labs(color = "Weeks 0 to 2", size = "Weight in kg", shape = "Diet", linetype="Diet", alpha= "Week") #rename the headers in the legend
 ggsave("nmds_ordination_after_clean_and_rar_with_circles.png")
+
+# Unconstrained:
+# Does not enforce spacing
+# "Letting the data fall where it falls"
+# Constrained:
+# Shows how important different factors are
+# Forces a scaling
+# Might want to put in both
+
+
+
+
+
+
+
+
