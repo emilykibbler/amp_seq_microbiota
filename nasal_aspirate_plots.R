@@ -460,9 +460,11 @@ phylo_decontam_no_strep_rar <- readRDS("phylo_decontam_no_strep_rar.rds")
 phylo_decontam_strep_rar <- readRDS("phylo_decontam_strep_rar.rds")
 
 
-plot10 <- plot_richness(phylo_decontam_rar, 
+# plot10 <- 
+  
+plot_richness(phylo_decontam_rar, 
                        x = "Group", #CHANGE ME, A is whatever factor you want on x-axis
-                       measures = c("Observed", "Shannon"), #CHANGE ME, whatever richness you want. = c("Observed","Shannon")
+                       measures = c("Chao1", "Shannon"), #CHANGE ME, whatever richness you want. = c("Observed","Shannon")
                        title = NULL) + 
   theme_set(theme_minimal(base_size = 14)) +
   geom_violin(trim = TRUE, aes(fill = Group)) + #optional. CHANGE ME, A is whatever factor to color violins
@@ -470,9 +472,12 @@ plot10 <- plot_richness(phylo_decontam_rar,
   theme(legend.position = "none") + #use to get rid of your legend
   # theme(axis.text.x = element_text(angle = 25, hjust = 1, size = 6),
   theme(axis.title.x = element_blank(),
-        plot.title = element_text(size = 14)) +
-  ylab("Bacterial Richness") +
-  ggtitle("All taxa")
+        plot.title = element_text(size = 14),
+        panel.border = element_rect(color = "gray", fill = NA, size = 1)) +
+  ylab("Alpha Diversity Measure") +
+  ggtitle("Diversity Metrics: Cleaned and Rarefied Data")
+ggsave("alpha_div_clean.png")
+
 
 plot11 <- plot_richness(phylo_decontam_no_strep_rar,
                        x = "Group", #CHANGE ME, A is whatever factor you want on x-axis
@@ -540,18 +545,18 @@ phylo_decontam_rar <- readRDS("phylo_decontam_rar.rds")
 
 phylo_decontam_rar_atb <- subset_and_trim(phylo_decontam_rar, "Group", "Antibiotics")
 phylo_decontam_rar_no_atb <- subset_and_trim(phylo_decontam_rar, "Group", "No antibiotics")
-atb_SVs <- row.names(as.data.frame(phylo_decontam_rar_atb@tax_table))
-no_atb_SVs <- row.names(as.data.frame(phylo_decontam_rar_no_atb@tax_table))
+decontam_atb_SVs <- row.names(as.data.frame(phylo_decontam_rar_atb@tax_table))
+decontam_no_atb_SVs <- row.names(as.data.frame(phylo_decontam_rar_no_atb@tax_table))
 
-list(
-  Antibiotics = atb_SVs,
-  No_Antibiotics = no_atb_SVs
-) %>%
-  ggVennDiagram() +
-    scale_x_continuous(expand = expansion(mult = .2)) +
-    theme(plot.title = element_text(face = "bold", size = 16)) +
-    ggtitle("SVs -- after decontam and rarification")
-  ggsave("venn_diagram_SVS_atb_no_atb.png")
+    list(
+      Antibiotics = atb_SVs,
+      No_Antibiotics = no_atb_SVs
+    ) %>%
+      ggVennDiagram() +
+        scale_x_continuous(expand = expansion(mult = .2)) +
+        theme(plot.title = element_text(face = "bold", size = 16)) +
+        ggtitle("SVs -- after decontam and rarification")
+      ggsave("venn_diagram_SVS_atb_no_atb.png")
 
 clean_phylo_rarified <- readRDS("clean_phylo_rarified.rds")
 
@@ -560,6 +565,18 @@ phylo_clean_rar_atb <- subset_and_trim(clean_phylo_rarified, "Group", "Antibioti
 phylo_clean_rar_no_atb <- subset_and_trim(clean_phylo_rarified, "Group", "No antibiotics")
 clean_atb_SVs <- row.names(as.data.frame(phylo_clean_rar_atb@tax_table))
 clean_no_atb_SVs <- row.names(as.data.frame(phylo_clean_rar_no_atb@tax_table))
+
+SVs_at_this_point <- c(clean_atb_SVs, clean_no_atb_SVs, decontam_no_atb_SVs, decontam_atb_SVs)
+SVs_at_this_point <- unique(SVs_at_this_point)
+length(SVs_at_this_point) # 1625
+
+clean_SVs <- c(clean_atb_SVs, clean_no_atb_SVs)
+clean_SVs <- unique(clean_SVs)
+length(phylo_clean_SVs) # 1414
+
+decontam_SVs <- c(decontam_no_atb_SVs, decontam_atb_SVs)
+decontam_SVs <- unique(decontam_SVs)
+length(decontam_SVs)
 
 list(
   Antibiotics = clean_atb_SVs,
@@ -583,7 +600,7 @@ list(
     theme(plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
           legend.position = "bottom") +
     ggplot2::scale_fill_gradient(low = "blue",high = "yellow") +
-    ggtitle("SVs -- After Decontam/Clean and Rarification")
+    ggtitle("SVs -- After Decontam or Ishaq Clean and Rarification")
 ggsave("venn_diagram_clean_decon_SVs.png")
 
 # heat maps
@@ -960,13 +977,17 @@ sigtab <- readRDS("sigtab.rds")
 ggplot(sigtab, aes(y = Genus, x = log2FoldChange, color = Phylum)) + #play with aesthetics to make graph informative
   geom_vline(xintercept = 0.0, color = "gray", linewidth = 0.5) +
   geom_point(aes(size = baseMean)) + #scale size by mean relative abundance
+  scale_size_continuous(range = c(3, 8)) +
   theme(axis.text.x = element_text(hjust = 0, vjust = 0.5, size = 10), 
-        axis.text.y = element_text(size = 10)) + 
+        axis.text.y = element_text(size = 11),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10),
+        panel.border = element_rect(color = "gray", fill = NA, size = 1)) + 
   xlab("log2 Fold Change") + 
   labs(size = "Mean Sequence Abundance",
        title = "Fold Change of Read Abundance",
-       subtitle = "Antibiotic-treated Compared to Control Group") + 
-  theme_minimal()
+       subtitle = "Antibiotic-treated Compared to Control Group")
+  # theme_minimal()
 ggsave("deseq_fc_analysis.png")
 
 ## Beta ordination ------

@@ -133,7 +133,8 @@ comparison[nrow(comparison) + 1, ] <- c("Median ASV per exp_samp", 144.5, 80)
 
 
 
-## Remove chimeras. Leave the method as consensus. -------------
+## Remove chimeras.-------------
+# Leave the method as consensus. 
 # multithread processing can be used with mac or linux, and verbose means it will print results to the screen		
 seqtab_nochim <- removeBimeraDenovo(seqtab, method = "consensus", multithread = TRUE, verbose = TRUE) 
 # My samples have Identified 875 bimeras out of 6019 input sequences.
@@ -661,9 +662,10 @@ alpha_diversity_table
 # phyloseq doesn't do stats or more complex graphs
 
 
+
 # use phyloseq to measure alpha diversity
 
-phylo_decontam_rar_rich <- estimate_richness(phylo_decontam_rar, measures = c("Observed", "Shannon")) #change to whatever measures you want
+phylo_decontam_rar_rich <- estimate_richness(phylo_decontam_rar, measures = c("Chao1", "Observed", "Shannon")) #change to whatever measures you want
 saveRDS(phylo_decontam_rar_rich, "phylo_decontam_rar_rich.rds")
 # use phyloseq to calculate Faith's Diversity metric (optional), https://rdrr.io/github/twbattaglia/btools/man/estimate_pd.html
 # EX_faith <- estimate_pd(EX_ps_clean.rar)
@@ -675,18 +677,27 @@ phylo_decontam_rar_rich_df <- normal_stats(phylo_decontam_rar) # see lab8_functi
 # Outputs:
   # Kurtosis: 1.334661
   # Shannon shapiro: W = 0.96103, p-value = 0.02104
-  # Observed shapiro: W = 0.86331, p-value = 9.1e-07
+  # Observed shapiro: W = 0.86331, p-value = 9.1e-07 -- I later update my richness metric from Observed to Chao1 to match the paper
   # Even shapiro: W = 0.96621, p-value = 0.04258
+
+# Outputs:
+  # Kurtosis: 1.940676
+  # Shannon shapiro: W = 0.96103, p-value = 0.02104
+  # Chao1 shapiro: W = 0.86163, p-value = 7.969e-07
+  # Even shapiro: W = 0.96756, p-value = 0.05132
+
 
 saveRDS(phylo_decontam_rar_rich_df, "phylo_decontam_rar_rich_df.rds")
 
  ## If your alpha diversity is not normally distributed (non-parametric) -----------------
 ### Kruskal-Wallis Test -----
 # K-W is the non-parametric version of ANOVA: http://www.sthda.com/english/wiki/kruskal-wallis-test-in-r
-kruskal.test(Observed ~ Group, data = phylo_decontam_rar_rich_df)
-# data:  Observed by Group
-# Kruskal-Wallis chi-squared = 10.823, df = 1, p-value = 0.001002
-
+kruskal.test(Chao1 ~ Group, data = phylo_decontam_rar_rich_df)
+# data:  Chao1 by Group
+# Kruskal-Wallis chi-squared = 10.358, df = 1, p-value = 0.001289
+kruskal.test(Shannon ~ Group, data = phylo_decontam_rar_rich_df)
+# data:  Shannon by Group
+# Kruskal-Wallis chi-squared = 4.7354, df = 1, p-value = 0.02955
 
 # Follow it up with a Conover Test if you have multiple comparisons. Note, code changed recently
 # https://rdrr.io/cran/DescTools/man/ConoverTest.html 
@@ -914,6 +925,9 @@ SVs_sig_diff_on_t_test <- c("GGAATATTGGACAATGGGCGAAAGCCTGATCCAGCCATGCCGCGTGTGTGA
 # in case I got confused and pasted something twice
 SVs_sig_diff_on_t_test <- unique(SVs_sig_diff_on_t_test)
 
+aligns_to_AY_in_paper <- "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG"
+
+t.test(atb_phylo.coreW_35@otu_table[,aligns_to_AY_in_paper], no_atb_phylo.coreW_35@otu_table[,aligns_to_AY_in_paper])
 
 # Lab 10: Comparing changes in taxonomy (Lab 10) ---------------------------------
 ## Focusing on a single taxon -------
@@ -1269,6 +1283,7 @@ ggbiplot(phylo_decontam_rar_pca, varname.size = 0, varname.abbrev = TRUE)
 ## PCoA in phyloseq -----------------
 
 # use phyloseq to calculate ordination for use in the plot
+# non-euclidian distance
 uJ_pcoa <- ordinate(phylo_decontam_rar, #calculate similarities
                        method = "PCoA", #ordination type
                        "jaccard", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted) but is usually run as binary=FALSE.
@@ -1281,7 +1296,7 @@ plot_ordination(phylo_decontam_rar, uJ_pcoa, type="samples", color="Group") #CHA
 
 
 ## NMDS in phyloseq -----------------
-
+# euclidian distance
 # use phyloseq to calculate ordination for use in the plot
 uJ_nmds <- ordinate(phylo_decontam_rar, #calculate similarities
                        method = "NMDS", #ordination type
@@ -1455,7 +1470,7 @@ TukeyHSD(betadisp)
 #but if you have a lot of outliers you may want to consider adding a data transformation.
 
 # first create a distance ordination. BE SURE THERE ARE NO NAs in your factorial data!! - check
-#If you need to alter something, see the "beta diversity components" section.
+# If you need to alter something, see the "beta diversity components" section.
 
 bray_not_na <- phyloseq::distance(physeq = phylo_decontam_rar, method = "bray") #CHANGE ME
 
@@ -1463,33 +1478,38 @@ cca_ord <- ordinate(
   physeq = phylo_decontam_rar, #CHANGE ME
   method = "CCA",
   distance = bray_not_na,
-  formula = ~ Group +  # CHANGE ME add factors
-    Condition(SampleID) #CHANGE ME use for repeated measures - not sure what that means
+  formula = ~ Group +  # If you want to see interaction between variables (like Group and Syndrome), change this + to a *
+    Condition(Syndrome) 
 )
 
-
-# Warning message: The model is overfitted with no unconstrained (residual) component
 cca_ord
 # paste the output here
-  # Call: cca(formula = OTU ~ Group + Condition(SampleID), data = data)
+  # Call: cca(formula = OTU ~ Group + Condition(Syndrome), data = data)
   # 
   # -- Model Summary --
   #   
   #   Inertia Proportion Rank
-  # Total           21.37       1.00     
-  # Conditional     21.37       1.00   74
-  # Unconstrained    0.00       0.00    0
+  # Total         21.36890    1.00000     
+  # Conditional    1.60084    0.07491    5
+  # Constrained    0.31292    0.01464    1
+  # Unconstrained 19.45513    0.91044   68
   # 
   # Inertia is scaled Chi-square
   # 
-  # -- Note --
-  #   
-  #   The model is overfitted with no unconstrained (residual) component.
-  # 
   # -- Eigenvalues --
+  #   
+  #   Eigenvalues for constrained axes:
+  #   CCA1 
+  # 0.31292 
+  # 
+  # Eigenvalues for unconstrained axes:
+  #   CA1    CA2    CA3    CA4    CA5    CA6    CA7    CA8 
+  # 0.8499 0.8377 0.8179 0.7584 0.7431 0.6975 0.6720 0.6563 
+  # (Showing 8 of 68 unconstrained eigenvalues)
+
 
 # NOTE: do you have CCA eigenvalues for each of the factors you put in? 
-# no, none...
+# no...
 # CCA1 = x axis, and CCA2 = y axis, so if you don't have both of those it will use CA which is the unconstrained axis instead.
 
 cca_ord <- ordinate(
@@ -1498,7 +1518,7 @@ cca_ord <- ordinate(
   distance = bray_not_na,
   formula = ~ Group)
 cca_ord
-# ok I think this output seems better
+# output
     # Call: cca(formula = OTU ~ Group, data = data)
     # 
     # -- Model Summary --
@@ -1528,7 +1548,6 @@ cca_ord
 # anova of whole model
 # anova(cca_ord, permu = 1000)
 
-
 # anova of the factors (terms) you specified
 anova(cca_ord, by = "terms", permu = 1000)
 # paste the output here   
@@ -1545,21 +1564,22 @@ anova(cca_ord, by = "terms", permu = 1000)
     #   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1      
 
 
-# cca plot with FACTORA in the model
+# cca plot with FACTOR A (for me, Group) in the model
 cca_plot <- plot_ordination(
-  physeq = phylo_decontam_rar, #CHANGE ME
+  physeq = phylo_decontam_rar, 
   ordination = cca_ord, 
-  color = "Group", #CHANGE ME
+  color = "Group",
   axes = c(1,2)) + 
   theme_minimal() +
-  # aes(shape = as.factor(Week)) + #CHANGE ME
-  geom_point(aes(colour = Group), size = 4) + #CHANGE ME
+  geom_point(aes(colour = Group), size = 4) +
   geom_point(colour = "grey90", size = 1.5) 
 cca_plot
 
-### Ask in class -------
+
 # above looks kinda crazy...
-# below -- I don't have CCA2, where does it come from?
+# below -- I don't have CCA2, where is it supposed to come from?
+# answer: the CCA2 must not be significant from my anova
+# comment out that line and it will use CA1 instead
 
 # Now add the environmental variables as arrows
 arrowmat <- vegan::scores(cca_ord, display = "bp")
@@ -1568,16 +1588,138 @@ arrowmat <- vegan::scores(cca_ord, display = "bp")
 arrowdf <- data.frame(labels = rownames(arrowmat), arrowmat)
 
 # Define the arrow aesthetic mapping
-arrow_map <- aes(xend = CCA1, 
-                 yend = CCA2, 
+arrow_map <- aes(xend = CCA1,
+                 # yend = CCA2, # I don't have a CCA2
+                 x = 0,
+                 y = 0,
+                 shape = NULL,
+                 color = NULL,
+                 label = labels)
+
+label_map <- aes(x = 1.3 * CCA1,
+                 # y = 1.3 * CCA2,
+                 shape = NULL,
+                 color = NULL,
+                 label = labels)
+
+arrowhead = arrow(length = unit(0.02, "npc"))
+
+
+# Make a new graphic
+cca_plot + 
+  geom_segment(
+    mapping = arrow_map, 
+    linewidth = .5, 
+    data = arrowdf, 
+    color = "gray", 
+    arrow = arrowhead
+  ) 
+
+# It looks crazy so it might not be the best method for this data
+# Put in paper: CCA was not significant on anything other than the primary variable (group) so that's why I didn't include it
+# The constrained ordinations are best for large data sets with many conditions
+
+
+
+## RDA in phyloseq -------------------------------------------
+# Redundancy analysis for linear relationships
+
+# first create a distance ordination. BE SURE THERE ARE NO NAs in your factorial data!! If you need to alter something, see the "beta diversity components" section.
+bray_not_na <- phyloseq::distance(physeq = phylo_decontam_rar, method = "bray")
+
+rda_ord <- ordinate(
+  physeq = phylo_decontam_rar, #CHANGEME
+  method = "RDA",
+  distance = bray_not_na,
+  formula = ~ Group
+)
+
+rda_ord
+# paste the output here
+
+# NOTE: do you have RDA eigenvalues for each of the factors you put in? RDA1 = x axis, and RDA2 = y axis, so if you don't have both of those it will use PC which is the unconstrained axis instead.
+    # 
+    # Call: rda(formula = OTU ~ Group, data = data)
+    # 
+    # -- Model Summary --
+    #   
+    #   Inertia Proportion Rank
+    # Total         8.405e+06  1.000e+00     
+    # Constrained   3.431e+05  4.082e-02    1
+    # Unconstrained 8.062e+06  9.592e-01   73
+    # 
+    # Inertia is variance
+    # 
+    # -- Eigenvalues --
+    #   
+    #   Eigenvalues for constrained axes:
+    #   RDA1 
+    # 343098 
+    # 
+    # Eigenvalues for unconstrained axes:
+    #   PC1     PC2     PC3     PC4     PC5     PC6     PC7     PC8 
+    # 1942629 1221730  939907  598770  378089  345196  308192  274695 
+    # (Showing 8 of 73 unconstrained eigenvalues)
+
+# anova of whole model
+anova(rda_ord, permu = 1000)
+# paste the output here    
+    # Permutation test for rda under reduced model
+    # Permutation: free
+    # Number of permutations: 999
+    # 
+    # Model: rda(formula = OTU ~ Group, data = data)
+    # Df Variance      F Pr(>F)    
+    # Model     1   343098 3.1069  0.001 ***
+    #   Residual 73  8061538                  
+    # ---
+    #   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+# anova of the factors (terms) you specified
+anova(rda_ord, by = "terms", permu = 1000)
+# paste the output here              
+    # Permutation test for rda under reduced model
+    # Terms added sequentially (first to last)
+    # Permutation: free
+    # Number of permutations: 999
+    # 
+    # Model: rda(formula = OTU ~ Group, data = data)
+    # Df Variance      F Pr(>F)   
+    # Group     1   343098 3.1069  0.002 **
+    #   Residual 73  8061538                 
+    # ---
+    #   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+# rda plot with FACTORA in the model
+rda_plot <- plot_ordination(
+  physeq = phylo_decontam_rar, #CHANGE ME
+  ordination = rda_ord, 
+  color = "Group", 
+  axes = c(1,2)) + 
+  theme_minimal() +
+  # aes(shape = as.factor(Week)) + #CHANGE ME
+  geom_point(aes(colour = Group), size = 4) + #CHANGE ME
+  geom_point(colour = "grey90", size = 1.5) 
+
+
+
+# Now add the environmental variables as arrows
+arrowmat <- vegan::scores(rda_ord, display = "bp")
+
+# Add labels, make a data.frame
+arrowdf <- data.frame(labels = rownames(arrowmat), arrowmat)
+
+# Define the arrow aesthetic mapping
+arrow_map <- aes(xend = RDA1, 
+                 yend = RDA2,
                  x = 0, 
                  y = 0, 
                  shape = NULL, 
                  color = NULL, 
                  label = labels)
 
-label_map <- aes(x = 1.3 * CCA1, 
-                 y = 1.3 * CCA2, 
+label_map <- aes(x = 1.3 * RDA1, 
+                 y = 1.3 * RDA2,
                  shape = NULL, 
                  color = NULL, 
                  label = labels)
@@ -1585,7 +1727,7 @@ label_map <- aes(x = 1.3 * CCA1,
 arrowhead = arrow(length = unit(0.02, "npc"))
 
 # Make a new graphic
-cca_plot + 
+rda_plot + 
   geom_segment(
     mapping = arrow_map, 
     linewidth = .5, 
@@ -1602,3 +1744,212 @@ cca_plot +
 
 
 
+## dbRDA in phyloseq -------------------------------------------
+# Constrained Analysis of Principal Coordinates or distance-based RDA, for non-linear relationships
+
+# first create a distance ordination. BE SURE THERE ARE NO NAs in your factorial data!! If you need to alter something, see the "beta diversity components" section.
+bray_not_na <- phyloseq::distance(physeq = phylo_decontam_rar, method = "bray")
+
+cap_ord <- ordinate(
+  physeq = phylo_decontam_rar, #CHANGEME
+  method = "CAP", #borrows capscale from the vegan package
+  distance = bray_not_na,
+  formula = ~ Group #CHANGE ME use for repeated measures
+)
+
+cap_ord
+# paste the output here
+
+    # Call: capscale(formula = distance ~ Group, data = data)
+    # 
+    # -- Model Summary --
+    #   
+    #   Inertia Proportion Rank
+    # Total         30.46888                
+    # RealTotal     31.80872    1.00000     
+    # Constrained    1.11588    0.03508    1
+    # Unconstrained 30.69285    0.96492   54
+    # Imaginary     -1.33985                
+    # 
+    # Inertia is squared Bray distance
+    # 
+    # -- Eigenvalues --
+    #   
+    #   Eigenvalues for constrained axes:
+    #   CAP1 
+    # 1.1159 
+    # 
+    # Eigenvalues for unconstrained axes:
+    #   MDS1  MDS2  MDS3  MDS4  MDS5  MDS6  MDS7  MDS8 
+    # 4.405 3.961 2.692 1.934 1.784 1.394 1.297 0.960 
+    # (Showing 8 of 54 unconstrained eigenvalues)
+
+
+# NOTE: do you have CAP eigenvalues for each of the factors you put in? CAP1 = x axis, and CAP2 = y axis, so if you don't have both of those it will use MDS which is the unconstrained axis instead.
+
+# anova of whole model
+anova(cap_ord, permu = 1000)
+# paste the output here    
+
+# anova of the factors (terms) you specified
+anova(cap_ord, by = "terms", permu = 1000)
+# paste the output here              
+
+    # Permutation test for capscale under reduced model
+    # Terms added sequentially (first to last)
+    # Permutation: free
+    # Number of permutations: 999
+    # 
+    # Model: capscale(formula = distance ~ Group, data = data)
+    # Df SumOfSqs     F Pr(>F)    
+    # Group     1   1.1159 2.654  0.001 ***
+    #   Residual 73  30.6928                 
+    # ---
+    #   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+# CAP plot with FACTORA in the model
+cap_plot <- plot_ordination(
+  physeq = phylo_decontam_rar, #CHANGE ME
+  ordination = cap_ord, 
+  axes = c(1,2)) + 
+  theme_minimal() +
+  # aes(shape = as.factor(Week)) + #CHANGE ME
+  geom_point(aes(colour = Group), size = 4) + #CHANGE ME
+  geom_point(colour = "grey90", size = 1.5) 
+
+
+
+
+# Now add the environmental variables as arrows
+arrowmat <- vegan::scores(cap_ord, display = "bp")
+
+# Add labels, make a data.frame
+arrowdf <- data.frame(labels = rownames(arrowmat), arrowmat)
+
+# Define the arrow aesthetic mapping
+arrow_map <- aes(xend = CAP1, 
+                 # yend = CAP2, 
+                 x = 0, 
+                 y = 0, 
+                 shape = NULL, 
+                 color = NULL, 
+                 label = labels)
+
+label_map <- aes(x = 1.3 * CAP1, 
+                 # y = 1.3 * CAP2, 
+                 shape = NULL, 
+                 color = NULL, 
+                 label = labels)
+
+arrowhead = arrow(length = unit(0.02, "npc"))
+
+# Make a new graphic
+cap_plot + 
+  geom_segment(
+    mapping = arrow_map, 
+    linewidth = .5, 
+    data = arrowdf, 
+    color = "gray", 
+    arrow = arrowhead
+  ) + 
+  geom_text(
+    mapping = label_map, 
+    size = 4,  
+    data = arrowdf, 
+    show.legend = FALSE
+  ) 
+
+
+
+## variance partitioning --------------
+# How much did any one factor contribute to the sample clustering?
+# http://www.hiercourse.com/docs/variationPartitioning.html 
+
+library(vegan)
+
+# create a dataframe from your SV table
+EX.df <- as.data.frame(otu_table(EX_ps_clean.rar))
+
+# extract your sample data from the phyloseq object
+env.df <- as.data.frame(sample_data(EX_ps_clean.rar))
+
+
+# calculate Principal Coordinates Of Neighborhood Matrix, diversity distance data transformed into rectangular format
+EX.pcnm <- pcnm(dist(bray_not_na))
+
+# environmental variables as predictors of community similarity
+cap.env <- capscale(EX.df ~ ., data=env.df, distance='bray')
+
+# calculate CCA 
+cap.pcnm <- capscale(EX.df ~ ., data=as.data.frame(scores(EX.pcnm)), distance='bray')
+
+
+# make a model using SV ordination and sample data
+mod0.env <- capscale(EX.df ~ 1, data=env.df, distance='bray') # add + Condition(SAMPLE_ID) for repeated measures
+
+# make a model using SV ordination and the component scores
+mod0.pcnm <- capscale(EX.df ~ 1, data=as.data.frame(scores(EX.pcnm)), distance='bray') # add + Condition(SAMPLE_ID) for repeated measures
+
+# select variables in each predictor table
+step.env <- ordistep(mod0.env, scope=formula(cap.env))
+
+# check variance inflation factors, higher number = data are redundant to another factor, 1= data are unique.  If factors are redundant (conflated) to each other (for example they basically report the same thing, go back and remove one and mention they were redundant/conflated in your manuscript Methods)
+vif.cca(step.env)
+
+
+step.pcnm <- ordistep(mod0.pcnm, scope=formula(cap.pcnm))
+
+step.env$anova
+# paste output here
+
+step.pcnm$anova
+# paste output here
+
+EX.pcnm.sub <- scores(EX.pcnm, 
+                      choices=c(1,3:16)) #CHANGE ME to include the significant pcnm numbers from previous command. If you want them all, write 1:16. to select only a few of them, write something like 1,3,6,7:9. 
+
+# partition variation among four predictor tables:
+EX.var <- varpart(EX.df, 
+                  ~ FACTORA, #CHANGE ME
+                  ~ FactorB, #CHANGE ME
+                  EX.pcnm.sub, data=env.df)
+
+#plot 
+par(mfrow=c(1, 2))
+showvarparts(4)
+plot(EX.var)
+
+
+
+EX.var
+# paste output here
+
+anova(rda(EX.df  ~ FACTORA + Condition(EX.pcnm.sub), data=env.df)) # add + Condition(env.df$SAMPLE_ID) for repeated measures
+# paste output here
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## fin -----------
+writeLines(capture.output(sessionInfo()), "sessionInfo.txt")

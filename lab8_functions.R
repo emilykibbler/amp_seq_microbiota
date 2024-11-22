@@ -14,20 +14,20 @@ normal_stats <- function(ps) {
     print("Probably one that ends in something like _clean_rar")
   }
   print("Reminder:")
-  print("I made this function to evaluate Observed and Shannon metrics")
-  df <- estimate_richness(ps, measures = c("Observed", "Shannon")) 
+  print("I made this function to evaluate Chao1 and Shannon metrics")
+  df <- estimate_richness(ps, measures = c("Chao1", "Shannon")) 
   # # measure evenness for each sample
-  even <- df$Shannon/log(df$Observed)
+  even <- df$Shannon/log(df$Chao1)
   # sd is sample data here not standard deviation
   rar_sd = as(sample_data(ps), "matrix")
   rar_sd = as.data.frame(rar_sd)
   result_df <- cbind(df, even, rar_sd)
 
   # # make a histogram to look at the shape of the data (bell curve? skew?). You can save this graph for your own benefit if you want.
-  hist(result_df$Observed)
+  hist(result_df$Chao1)
   # Kurtosis
   print("Kurtosis value is:")
-  print(kurtosis(result_df$Observed))
+  print(kurtosis(result_df$Chao1))
   print("Red flag for kurtosis is absolute value >2; orange flag >1")
   print("Positive or negative value indicates direction of tail")
   # Shapiro - Shannon
@@ -36,10 +36,10 @@ normal_stats <- function(ps) {
   print(shan_shap)
   print_norm_check(shan_shap)
   # Shapiro - Observed
-  obs_shap <- shapiro.test(result_df$Observed)
-  print("Observed diversity shapiro test:")
-  print(obs_shap)
-  print_norm_check(obs_shap)
+  chao_shap <- shapiro.test(result_df$Chao1)
+  print("Chao1 diversity shapiro test:")
+  print(chao_shap)
+  print_norm_check(chao_shap)
   # Shapiro - Evennes
   even_shap <- shapiro.test(result_df$even)
   print("Evenness shapiro test:")
