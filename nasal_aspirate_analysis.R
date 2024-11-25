@@ -444,7 +444,7 @@ write.csv(decontam_all_taxa, 'decontam_all_taxa.csv')
 # decontam_all_taxa
 
 # OPTIONAL: try adding species designation to the table. this may be memory intensive, and may take a few hours on slow laptops.You can also try this after the Lab 6 step to remove certain taxa by name, in case you need to save on computational space.
-# decontam_all_taxa <- readRDS("decontam_all_taxa.rds")
+decontam_all_taxa <- readRDS("decontam_all_taxa.rds")
 
 
 decontam_all_taxa_species <- addSpecies(decontam_all_taxa, 

@@ -70,7 +70,7 @@ install_optional <- function() {
   remotes::install_github("twbattaglia/btools")
   # if (!require(devtools)) install.packages("devtools")
   devtools::install_github("gaospecial/ggVennDiagram")
-  
+  install.packages("seqinr")
   install_github("vqv/ggbiplot")
   
   # install.packages("paletteer")
@@ -99,7 +99,7 @@ load_libraries <- function() {
   library(asbio)
   library(microbiome)
   library(DESeq2)
-
+  library(seqinr)
   library(plyr)
 
   library(magrittr)
