@@ -99,6 +99,7 @@ decontam_all_taxa <- as.data.frame(decontam_all_taxa)
 nrow(subset(decontam_all_taxa, is.na(Kingdom))) # 227
 nrow(decontam_all_taxa) # 5074
 nrow(subset(decontam_all_taxa, is.na(Kingdom)))/nrow(decontam_all_taxa) # 0.045
+# 1 - nrow(subset(decontam_all_taxa, is.na(Kingdom)))/nrow(decontam_all_taxa)
 # RDP:
 RDP_decontam_all_taxa <- as.data.frame(RDP_decontam_all_taxa)
 nrow(subset(RDP_decontam_all_taxa, is.na(Kingdom))) # 927

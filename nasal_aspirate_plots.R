@@ -12,7 +12,9 @@ phylo_clean_strep_rar <- readRDS('phylo_clean_strep_rar.rds')
 
 ## Patient metadata ------
 patient_data_correlation_summary <- readRDS("numeric_patient_data_correlation_summary.rds")
-
+patient_data_correlation_summary$Variable <- str_replace_all(patient_data_correlation_summary$Variable, "_", " ")
+patient_data_correlation_summary$Variable <- str_to_title(patient_data_correlation_summary$Variable) 
+head(patient_data_correlation_summary)
 
 p1 <-  subset(patient_data_correlation_summary, Variable != "Group" & Variable != "SampleID" ) %>%
         ggplot(aes(y = Variable, x = as.numeric(p.value), size = 2)) +
@@ -20,7 +22,8 @@ p1 <-  subset(patient_data_correlation_summary, Variable != "Group" & Variable !
         scale_size(guide = "none") +
         scale_color_gradient2(low = "blue",high = "red", midpoint = 0) +
         theme(panel.background = element_rect(fill = "gray"),
-              axis.title.y = element_blank()) +
+              axis.title.y = element_blank(),
+              axis.text.y = element_text(size = 9)) +
         scale_x_continuous(breaks = seq(0, 1, 0.1)) +
         labs(color = "Correlation coefficient",
              x = "p-value",
@@ -28,9 +31,13 @@ p1 <-  subset(patient_data_correlation_summary, Variable != "Group" & Variable !
              subtitle = "Treatment Group vs Control Group") +
         geom_vline(xintercept = 0.05, color = "red") +
         annotate("text", x = 0.03, y = 10, label = "p = 0.05", angle = 90)
-ggsave("numeric_correlation_patient_metrics.png")
+p1
+# ggsave("numeric_correlation_patient_metrics.png")
 
 chisq_summary <- readRDS("chisq_summary.rds")
+chisq_summary$variable <- str_replace_all(chisq_summary$variable, "_", " ")
+chisq_summary$variable <- str_to_title(chisq_summary$variable)
+head(chisq_summary)
 
 p2 <-  subset(chisq_summary, variable != "Group" & variable != "SampleID" ) %>%
         ggplot(aes(y = variable, x = as.numeric(p.value), size = 2)) +
@@ -38,7 +45,8 @@ p2 <-  subset(chisq_summary, variable != "Group" & variable != "SampleID" ) %>%
         scale_size(guide = "none") +
         scale_color_gradient2(low = "blue",high = "red", midpoint = 0) +
         theme(panel.background = element_rect(fill = "gray"),
-              axis.title.y = element_blank()) +
+              axis.title.y = element_blank(),
+              axis.text.y = element_text(size = 9)) +
         scale_x_continuous(breaks = seq(0, 1, 0.1)) +
         labs(color = "X-squared",
              x = "p-value",
@@ -46,9 +54,14 @@ p2 <-  subset(chisq_summary, variable != "Group" & variable != "SampleID" ) %>%
              subtitle = "Treatment Group vs Control Group") +
         geom_vline(xintercept = 0.05, color = "red") +
         annotate("text", x = 0.03, y = 25, label = "p = 0.05", angle = 90)
-ggsave("categorical_correlation_patient_metrics.png")
+# ggsave("categorical_correlation_patient_metrics.png")
 
-ggarrange(plotlist = list(p1, p2), labels = c("A", "B"), nrow = 2, ncol = 1, heights = c(1, 1.25))
+ggarrange(plotlist = list(p1, p2), 
+          labels = c("A", "B"), 
+          nrow = 2, 
+          ncol = 1, 
+          heights = c(1, 1.25),
+          align = "v")
 ggsave("correlation_patient_metrics.png")
 
 ## Plot QC steps ------------------
@@ -460,7 +473,7 @@ phylo_decontam_no_strep_rar <- readRDS("phylo_decontam_no_strep_rar.rds")
 phylo_decontam_strep_rar <- readRDS("phylo_decontam_strep_rar.rds")
 
 
-# plot10 <- 
+## Clean alpha diversity ---------
   
 plot_richness(phylo_decontam_rar, 
                        x = "Group", #CHANGE ME, A is whatever factor you want on x-axis
@@ -477,6 +490,52 @@ plot_richness(phylo_decontam_rar,
   ylab("Alpha Diversity Measure") +
   ggtitle("Diversity Metrics: Cleaned and Rarefied Data")
 ggsave("alpha_div_clean.png")
+
+### Clean and dirty richness together -----
+
+clean_alpha_plot <- plot_richness(phylo_decontam_rar, 
+                                  x = "Group", #CHANGE ME, A is whatever factor you want on x-axis
+                                  measures = c("Chao1", "Shannon"), #CHANGE ME, whatever richness you want. = c("Observed","Shannon")
+                                  title = NULL) + 
+                    theme_set(theme_minimal(base_size = 14)) +
+                    geom_violin(trim = TRUE, aes(fill = Group)) + #optional. CHANGE ME, A is whatever factor to color violins
+                    geom_boxplot(width = 0.1, aes(group = Group)) + #optional. CHANGE ME, A is whatever factor to group boxplots
+                    theme(legend.position = "none") + #use to get rid of your legend
+                    # theme(axis.text.x = element_text(angle = 25, hjust = 1, size = 6),
+                    theme(axis.title.x = element_blank(),
+                          plot.title = element_text(size = 14),
+                          panel.border = element_rect(color = "gray", fill = NA, size = 1)) +
+                    ylab("Alpha Diversity Measure")
+clean_alpha_plot
+
+sample_data(phylo)$Group <- factor(sample_data(phylo)$Group, 
+                                                levels = c("IPD_ATB", "IPD", "controlneg"), 
+                                                labels = c("Antibiotics", "No antibiotics", "Lab Negative Control")) 
+
+dirty_alpha_plot <- plot_richness(phylo, 
+                                  x = "Group", #CHANGE ME, A is whatever factor you want on x-axis
+                                  measures = c("Chao1", "Shannon"), #CHANGE ME, whatever richness you want. = c("Observed","Shannon")
+                                  title = NULL) + 
+  theme_set(theme_minimal(base_size = 14)) +
+  geom_violin(trim = TRUE, aes(fill = Group)) + #optional. CHANGE ME, A is whatever factor to color violins
+  geom_boxplot(width = 0.1, aes(group = Group)) + #optional. CHANGE ME, A is whatever factor to group boxplots
+  theme(legend.position = "none") + #use to get rid of your legend
+  # theme(axis.text.x = element_text(angle = 25, hjust = 1, size = 6),
+  theme(axis.title.x = element_blank(),
+        plot.title = element_text(size = 14),
+        panel.border = element_rect(color = "gray", fill = NA, size = 1)) +
+  ylab("Alpha Diversity Measure")
+dirty_alpha_plot
+
+ggarrange(plotlist = list(dirty_alpha_plot, clean_alpha_plot),
+          labels = c("Before Decontamination", "After Decontamination and Rarefaction"),
+          hjust = -.1,
+          vjust = 1,
+          font.label = list(face = "bold", size = 12),
+          nrow = 2) %>%
+  annotate_figure(top = text_grob("Alpha Diversity Plots; Before and After Data Cleaning", size = 16, face = "bold"))
+ggsave("alpha_diversity_before_after_clean.png")
+  
 
 
 plot11 <- plot_richness(phylo_decontam_no_strep_rar,
@@ -644,7 +703,7 @@ plot_heatmap(top_300, fill = "Class") +
   ggtitle("Heat maps, top 300, grouped by Class")
 ggsave("heat_map_300_class.png")
 
-## Dirty and clean taxa analysis --------------
+### Dirty and clean taxa analysis --------------
 phylo_dirty_with_species <- readRDS("phylo_dirty_with_species.rds")
 
 df_dirty <- as.data.frame(phylo_dirty_with_species@tax_table)
@@ -844,8 +903,8 @@ ggarrange(plotlist = list(p1, p2, p3),
 ggsave("35prev_vertical_core_SV_heatmaps.png")
 
  ### Box plots -------
-
-
+atb_phylo.coreW_35 <- readRDS("atb_phylo.coreW_35.rds")
+no_atb_phylo.coreW_35 <- readRDS("no_atb_phylo.coreW_35.rds")
 
 amalgamate_SV_data <- function(input_otu_table, group_name){
   df <- data.frame(matrix(nrow = 0, ncol = 3))
@@ -876,8 +935,8 @@ dim(dat)
 temp <- as.data.frame(atb_phylo.coreW_35@tax_table)
 temp$SV <- row.names(temp)
 dat <- left_join(dat, temp, by = "SV")
-dim(dat)
-length(unique(dat$SV))
+# dim(dat)
+# length(unique(dat$SV))
 
 subset(dat, !is.na(Genus)) %>% 
   ggplot(aes(x = SV, y = Abundance, color = Genus)) +
@@ -917,14 +976,16 @@ p1 <- subset(dat, !is.na(Genus)) %>%
       geom_point(
         aes(x = SV, y = signif),
         shape = "*", 
-        size = 6, 
+        size = 8, 
+        color = "red",
         show.legend = FALSE) +
       ylim(c(0, 1.05)) +
       scale_color_paletteer_d("tvthemes::Alexandrite") +
       facet_grid(cols = vars(Phylum), rows = vars(Group), scales = "free", space = "free") +
       theme(axis.text.x = element_blank(),
             legend.position = "top",
-            panel.border = element_rect(color = "gray", fill = NA, size = 1))
+            panel.border = element_rect(color = "black", fill = NA, size = 1),
+            panel.background = element_rect(color = "gray"))
 
 p1
 
@@ -935,14 +996,16 @@ p2 <- subset(dat, !is.na(Genus)) %>%
       geom_point(
         aes(x = SV, y = signif),
         shape = "*", 
-        size = 6, 
+        size = 8,
+        color = "red",
         show.legend = FALSE) +
       ylim(c(0, 1.05)) +
       scale_color_paletteer_d("tvthemes::Alexandrite") +
       facet_grid(cols = vars(Phylum), rows = vars(Group), scales = "free", space = "free") +
       theme(axis.text.x = element_blank(),
             legend.position = "top",
-            panel.border = element_rect(color = "gray", fill = NA, size = 1))
+            panel.border = element_rect(color = "black", fill = NA, size = 1),
+            panel.background = element_rect(color = "gray"))
 
 p2
 ggarrange(plotlist = list(p1, p2),

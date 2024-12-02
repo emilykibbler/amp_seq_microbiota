@@ -483,25 +483,25 @@ summary(rowSums(phylo_decontam_with_species@otu_table)[1:76])
 
 # clean out chloroplast and mitochondria. can also elect to remove other contaminating domains or kingdoms as needed. 
 
-# phylo_clean_with_species <- readRDS("phylo_clean_with_species.rds")
+phylo_decontam_with_species <- readRDS("phylo_decontam_with_species.rds")
 # Optional: explore your taxonomy before filtering. Use the tax table you made
 
 df <- as.data.frame(phylo_decontam_with_species@tax_table)
-table(df$Kingdom)
+table(df$Kingdom) # 1 eukaryotic SV to be removed
 table(df$Phylum)
 table(df$Class)
-table(df$Order)
-table(df$Family)
+table(df$Order) # 17 chloroplast to be removed
+table(df$Family) # 724 mitochondria
 
 phylo_decontam_with_species <- phylo_decontam_with_species %>% 
-  subset_taxa(Family != "Mitochondria" & Order != "Chloroplast")
+  subset_taxa(Kingdom != "Eukaryota" & Family != "Mitochondria" & Order != "Chloroplast")
 summary(rowSums(phylo_decontam_with_species@otu_table)[1:76])
   # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
   # 2922   40793   63951   67733   90951  197735 
 saveRDS(phylo_decontam_with_species, "phylo_decontam_with_species.rds")
 
 # Write out a description of experimental design (Homework)
-# FIXME
+# See manuscript
 
 
 # Lab 7: Rarefaction (Lab 7_A) --------------------------------------------------
