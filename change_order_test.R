@@ -27,7 +27,7 @@ setwd("/Users/emilykibbler/Desktop/projects/R/AVS_554/nasal")
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab2_functions.R")
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab3_functions.R")
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab5_functions.R")
-source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab7_functions.R")
+source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab8_functions.R")
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab9_functions.R")
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/AVS554_packages.R")
 # install_necessary()
@@ -101,7 +101,9 @@ phylo_species_then_decontam <- prune_taxa(!contamdf.prev05$contaminant, phylo_di
 # 12. Check how many are left
 phylo_species_then_decontam
 # 93 samples and 1884 SVs left
-# saveRDS(phylo_species_then_decontam, "phylo_species_then_decontam.rds")
+saveRDS(phylo_species_then_decontam, "phylo_species_then_decontam.rds")
+
+phylo_species_then_decontam <- readRDS("phylo_species_then_decontam.rds")
 
 
 summary(rowSums(phylo_species_then_decontam@otu_table[1:76,]))
@@ -113,6 +115,77 @@ summary(make_SV_summary(as.data.frame(phylo_species_then_decontam@otu_table))$SV
   # 5.00   19.00   40.00   60.26   84.50  266.00 
 dim(phylo_species_then_decontam@otu_table)
 # 93, 1884
+
+# Lab 7: Rarefaction (Lab 7_A) --------------------------------------------------
+# To compare sequence data accurately, it is often necessary to rarefy/normalize SVs to even depth across all samples
+# Rarefaction is not subject to library effect sizes, and reportedly works best (compared to logUQ, CSS, DESeqVS, edgeR-TMM): https://microbiomejournal.biomedcentral.com/articles/10.1186/s40168-017-0237-y
+
+
+
+# make a rarefaction curve to see if your samples have enough coverage. To make it prettier, check out this tutorial: https://fromthebottomoftheheap.net/2015/04/16/drawing-rarefaction-curves-with-custom-colours/
+#
+
+tab <- otu_table(phylo_species_then_decontam, taxa_are_rows = FALSE)
+class(tab) <- "matrix" # tab <- as.matrix(tab) will do nothing for some reason
+## you get a warning here, ignore, this is what we need to have
+tab <- t(tab) # transpose observations to rows
+
+r_curve <- rarecurve(tab, step = 10, cex = 0.5, label = FALSE) 
+# optional to save this plot
+
+# take a look at rowsums, or total sequences per sample
+
+# Result from decontam then species:
+  # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  # 2922   40793   63951   67733   90951  197735 
+  # smallest reads (sequences) in a sample ______ B136 -- 2922 
+  # largest in a sample ______ B166 197735
+  # number of experimental samples with <5000 ______ 1
+  # In the paper they rarified to 12k, I don't understand how I lost so many reads
+sort(rowSums(otu_table(phylo_species_then_decontam))) # lab negs have the least; only one sample < 5k, three have < 12k
+rowSums(otu_table(phylo_species_then_decontam)) # the last 17 are the lab neg cts
+summary((rowSums(otu_table(phylo_species_then_decontam))[1:76]))
+# Output:
+  # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  # 2922   41322   64258   67958   91020  198662
+
+dim(phylo_species_then_decontam@otu_table)
+# 93, 1884 -- same as decontam then species
+
+# Output from decontam then species:
+  # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  # 5.00   19.00   39.50   59.76   83.50  265.00 
+summary(make_SV_summary(as.data.frame(phylo_species_then_decontam@otu_table))$SVs[1:76])
+# Output:
+  # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  # 5.00   19.00   40.00   60.26   84.50  266.00 
+
+
+phylo_species_then_decontam_rar <- rarefy_even_depth(phylo_species_then_decontam, 
+                                        sample.size = 5000, # CHANGE ME to the sequences/sample you want. 5-10k is a good amount, more is better
+                                        replace = TRUE, #sampling with or without replacement
+                                        trimOTUs = TRUE, #remove SVs left empty (called OTUs here but really they are SVs) 
+                                        rngseed = 711, 
+                                        verbose = TRUE)
+# set.seed(711) was used
+# 17 lab negative control samples removed and one experimental sample, same as decontam then species
+# 383 OTUs removed -- 363 other way around
+
+
+phylo_species_then_decontam_rar
+# 1501 taxa and 75 samples
+# other way around: # 1521 taxa, 75 samples
+
+
+# this helps with plotting later
+sample_data(phylo_species_then_decontam_rar)$Group <- factor(sample_data(phylo_species_then_decontam_rar)$Group, 
+                                                levels = c("IPD_ATB", "IPD"), 
+                                                labels = c("Antibiotics", "No antibiotics")) 
+
+saveRDS(phylo_species_then_decontam_rar, "phylo_species_then_decontam_rar.rds")
+
+
+
 
 ### CONCLUSION --------
 # really doesn't matter

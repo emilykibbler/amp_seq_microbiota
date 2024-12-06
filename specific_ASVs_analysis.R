@@ -17,13 +17,6 @@ atb_core_svs <- colnames(atb_phylo.coreW@otu_table)
 no_atb_core_svs <- colnames(no_atb_phylo.coreW@otu_table)
 
 
-# vmatchPattern(atb_core_svs[2], asv2_and_asv11, fixed = FALSE, max.mismatch = 1)
-# 
-# vmatchPattern(atb_core_svs[2], paper_sig_asvs[1], fixed = FALSE)
-# vmatchPattern(atb_core_svs[2], paper_sig_asvs[2], fixed = FALSE)
-# length(vmatchPattern(atb_core_svs[2], paper_sig_asvs[1], fixed = FALSE, max.mismatch = 1))
-# length(unlist(vmatchPattern("AA", asv2_and_asv11, fixed = FALSE, max.mismatch = 2)))
-
 for (i in 1:length(atb_core_svs)) {
   for (j in 1:length(paper_sig_asvs)) {
     if (length(unlist(vmatchPattern(atb_core_svs[i], paper_sig_asvs[j], fixed = FALSE))) > 0) {
@@ -34,6 +27,7 @@ for (i in 1:length(atb_core_svs)) {
     }
   }
 }
+
 # [1] "SV sequence:"
 # [1] "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTAGGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG"
 # [1] "Which is column number 2"

@@ -812,7 +812,8 @@ phylo_decontam_rar_rich_df <- readRDS("phylo_decontam_rar_rich_df.rds") # this c
 top100_decontam_rar_corr_df <- create_top_N_corr_df(phylo_decontam_rar, 100, phylo_decontam_rar_rich_df) # see lab9_functions
 # check header to make sure it looks good
 head(top100_decontam_rar_corr_df)
-# Top 100 don't all have reads
+# Top 100 don't all have reads after rare
+
 
 
 # This is from browsing the metadata
@@ -899,6 +900,9 @@ source("~/Desktop/projects/R/AVS_554/lab9_functions.R")
 # identical(test_phylo.coreW, phylo.coreW)
 phylo.coreW_25 <- core_taxa_finder(phylo_decontam_rar, c(1/10000, 25/100))
 saveRDS(phylo.coreW_25, "phylo.coreW_25.rds")
+
+
+
 phylo.coreW_35 <- core_taxa_finder(phylo_decontam_rar, c(1/10000, 35/100))
 saveRDS(phylo.coreW_35, "phylo.coreW_35.rds")
 
@@ -910,7 +914,9 @@ no_atb_phylo.coreW_35 <- subset_samples(phylo.coreW_35, Group == "No antibiotics
 saveRDS(no_atb_phylo.coreW_35, "no_atb_phylo.coreW_35.rds")
 
 # Heat maps and boxplots of the above data can be found in the plot script
-
+phylo.coreW_35 <- readRDS("phylo.coreW_35.rds")
+atb_phylo.coreW_35 <- readRDS("atb_phylo.coreW_35.rds")
+no_atb_phylo.coreW_35 <- readRDS("no_atb_phylo.coreW_35.rds")
 
 for (i in 1:ncol(phylo.coreW_35@otu_table)) {
   print(colnames(atb_phylo.coreW_35@otu_table)[i])
@@ -928,6 +934,66 @@ SVs_sig_diff_on_t_test <- unique(SVs_sig_diff_on_t_test)
 aligns_to_AY_in_paper <- "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG"
 
 t.test(atb_phylo.coreW_35@otu_table[,aligns_to_AY_in_paper], no_atb_phylo.coreW_35@otu_table[,aligns_to_AY_in_paper])
+
+aligns_to_HG_in_paper <- "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG"
+t.test(atb_phylo.coreW_35@otu_table[,aligns_to_HG_in_paper], no_atb_phylo.coreW_35@otu_table[,aligns_to_HG_in_paper])
+
+### Simple method ------------
+
+# this is the one with SVs as colnames, sample as row names, and read numbers as values
+view(phylo_decontam_rar@otu_table)
+# this is the one with SVs as row names, classifications as colnames, class names as values
+view(phylo_decontam_rar@tax_table)
+
+phylo_decontam_rar_atb <- subset_samples(phylo_decontam_rar, Group == "Antibiotics")
+phylo_decontam_rar_no_atb <- subset_samples(phylo_decontam_rar, Group == "No antibiotics")
+
+phylo_decontam_rar_atb_otu <- as.data.frame(phylo_decontam_rar_atb@otu_table)
+dim(phylo_decontam_rar_atb_otu)
+phylo_decontam_rar_no_atb_otu <- as.data.frame(phylo_decontam_rar_no_atb@otu_table)
+dim(phylo_decontam_rar_no_atb_otu)
+
+sig_SVs <- data.frame(matrix(nrow = 0, ncol = 2))
+colnames(sig_SVs) <- c("SV", "p-value")
+
+# unlist(t.test(phylo_decontam_rar_atb_otu[,1], phylo_decontam_rar_no_atb_otu[,1]))
+
+for (i in 1:ncol(phylo_decontam_rar_atb_otu)) {
+  if (unlist(t.test(phylo_decontam_rar_atb_otu[,i], phylo_decontam_rar_no_atb_otu[,i]))[3] < 0.05) {
+    sig_SVs[nrow(sig_SVs) + 1, ] <- c(colnames(phylo_decontam_rar_atb_otu)[i], unlist(t.test(phylo_decontam_rar_atb_otu[,i], phylo_decontam_rar_no_atb_otu[,i]))[3])
+  }
+}
+
+dim(sig_SVs)
+tax_key <- as.data.frame(phylo_decontam_rar@tax_table)
+tax_key$SV <- row.names(tax_key)
+sig_SVs <- left_join(sig_SVs, tax_key, by = "SV")
+
+phylo_decontam_rar_abundance <- microbiome::transform(phylo_decontam_rar, "compositional")
+phylo_decontam_rar_abundance_df <- as.data.frame(phylo_decontam_rar_abundance@otu_table)
+abundance_means <- as.data.frame(cbind(colnames(phylo_decontam_rar_abundance_df), colMeans(phylo_decontam_rar_abundance_df)))
+colnames(abundance_means) <- c("SV", "mean_abundance")
+
+phylo_decontam_rar_abundance_df$SampleID <- row.names(phylo_decontam_rar_abundance_df)
+phylo_decontam_rar_abundance_df <- pivot_longer(phylo_decontam_rar_abundance_df, 
+                                                cols = colnames(phylo_decontam_rar_abundance_df)[1:length(phylo_decontam_rar_abundance_df) - 1],
+                                                names_to = "SV",
+                                                values_to = "Abundance")
+phylo_decontam_rar_abundance_df <- left_join(phylo_decontam_rar_abundance_df, 
+                                             as.data.frame(phylo_decontam_rar_abundance@sam_data)[,1:2],
+                                             by = "SampleID")
+
+sig_SVs <- left_join(sig_SVs, phylo_decontam_rar_abundance_df, by = "SV")
+sig_SVs <- left_join(sig_SVs, abundance_means, by = "SV")
+sig_SVs$mean_abundance <- as.numeric(sig_SVs$mean_abundance)
+view(sig_SVs)
+ASV3 <- "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG"
+ASV3 %in% unique(sig_SVs$SV)
+view(subset(sig_SVs, SV == ASV3))
+
+my_t_test_sig_SV_sequences <- unique(sig_SVs$SV)
+
+saveRDS(sig_SVs, "sig_SVs.rds")
 
 # Lab 10: Comparing changes in taxonomy (Lab 10) ---------------------------------
 ## Focusing on a single taxon -------

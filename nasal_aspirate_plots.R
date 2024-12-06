@@ -474,7 +474,10 @@ phylo_decontam_strep_rar <- readRDS("phylo_decontam_strep_rar.rds")
 
 
 ## Clean alpha diversity ---------
-  
+
+sample_data(phylo_decontam_rar)$Group <- factor(sample_data(phylo_decontam_rar)$Group, 
+                                                levels = c("No antibiotics", "Antibiotics"))
+
 plot_richness(phylo_decontam_rar, 
                        x = "Group", #CHANGE ME, A is whatever factor you want on x-axis
                        measures = c("Chao1", "Shannon"), #CHANGE ME, whatever richness you want. = c("Observed","Shannon")
@@ -487,11 +490,49 @@ plot_richness(phylo_decontam_rar,
   theme(axis.title.x = element_blank(),
         plot.title = element_text(size = 14),
         panel.border = element_rect(color = "gray", fill = NA, size = 1)) +
-  ylab("Alpha Diversity Measure") +
+  ylab("Alpha Diversity Metric") +
   ggtitle("Diversity Metrics: Cleaned and Rarefied Data")
 ggsave("alpha_div_clean.png")
 
+# trying to replicate the paper's figure closer
+phylo_decontam_rar_df <- estimate_richness(phylo_decontam_rar, measures = c("Chao1", "Shannon"))
+head(phylo_decontam_rar_df)
+phylo_decontam_rar_df <- subset(phylo_decontam_rar_df, select = -se.chao1)
+phylo_decontam_rar_df$Sample <- row.names(phylo_decontam_rar@sam_data)
+phylo_decontam_rar_df$Group <- phylo_decontam_rar@sam_data$Group
+phylo_decontam_rar_df <- pivot_longer(phylo_decontam_rar_df, c("Chao1", "Shannon"), names_to = "Metric")
+phylo_decontam_rar_df$Group <- str_replace_all(phylo_decontam_rar_df$Group, "No antibiotics", "Not exposed (n=22)")
+phylo_decontam_rar_df$Group <- str_replace_all(phylo_decontam_rar_df$Group, "Antibiotics", "Exposed (n=54)")
+phylo_decontam_rar_df$Group <- factor(phylo_decontam_rar_df$Group,
+                                      levels = c("Not exposed (n=22)", "Exposed (n=54)"))
+
+subset(phylo_decontam_rar_df, Group == "Not exposed (n=22)") %>%
+  subset(Metric == "Chao1") %>%
+    nrow() # yes, 22
+
+subset(phylo_decontam_rar_df, Group == "Not exposed (n=22)") %>%
+  subset(Metric == "Chao1") %>%
+    view()
+
+phylo_decontam_rar_df %>% ggplot(aes(x = Group, y = value)) +
+  # theme_set(theme_minimal(base_size = 14)) +
+  # geom_violin(trim = TRUE, aes(fill = Group)) + #optional. CHANGE ME, A is whatever factor to color violins
+  geom_boxplot(aes(fill = Group), outlier.shape = NA) + 
+  scale_fill_manual(values = c("#efe68a", "#679acc")) +
+  facet_wrap(~Metric, scales = "free") +
+  geom_point(position = position_jitter(width = 0.1)) +
+  theme(legend.position = "none") + #use to get rid of your legend
+  # theme(axis.text.x = element_text(angle = 25, hjust = 1, size = 6),
+  theme(plot.title = element_text(size = 14),
+        axis.text.x = element_text(size = 12),
+        panel.border = element_rect(color = "black", fill = NA, size = 1)) +
+  ylab("Alpha Diversity Metric") +
+  ggtitle("Diversity Metrics: Cleaned and Rarefied Data")
+ggsave("paper_dup_plot.png")
+
 ### Clean and dirty richness together -----
+
+
 
 clean_alpha_plot <- plot_richness(phylo_decontam_rar, 
                                   x = "Group", #CHANGE ME, A is whatever factor you want on x-axis
@@ -511,6 +552,12 @@ clean_alpha_plot
 sample_data(phylo)$Group <- factor(sample_data(phylo)$Group, 
                                                 levels = c("IPD_ATB", "IPD", "controlneg"), 
                                                 labels = c("Antibiotics", "No antibiotics", "Lab Negative Control")) 
+# in the paper they have no-atb on the left
+
+sample_data(phylo)$Group <- factor(sample_data(phylo)$Group, 
+                                   levels = c("No antibiotics", "Antibiotics", "Lab Negative Control"))
+# save the updated object
+saveRDS(phylo, "phylo.rds")
 
 dirty_alpha_plot <- plot_richness(phylo, 
                                   x = "Group", #CHANGE ME, A is whatever factor you want on x-axis
@@ -935,28 +982,8 @@ dim(dat)
 temp <- as.data.frame(atb_phylo.coreW_35@tax_table)
 temp$SV <- row.names(temp)
 dat <- left_join(dat, temp, by = "SV")
-# dim(dat)
-# length(unique(dat$SV))
 
-subset(dat, !is.na(Genus)) %>% 
-  ggplot(aes(x = SV, y = Abundance, color = Genus)) +
-  geom_boxplot() +
-  facet_grid(cols = vars(Phylum), rows = vars(Group), scales = "free", space = "free") +
-  theme(axis.text.x = element_blank(),
-        legend.position = "top") +
-  labs(title = "Core SVs",
-       subtitle = "Frequency > 1/10,000; Prevalence > 0.35")
-ggsave("core_SVs_top_13.png")
 
-p1 <- subset(dat, !is.na(Genus)) %>% 
-        subset(Phylum == "Firmicutes") %>%
-          ggplot(aes(x = SV, y = Abundance, color = Genus)) +
-          geom_boxplot() +
-          scale_color_paletteer_d("tvthemes::Alexandrite") +
-          facet_grid(cols = vars(Phylum), rows = vars(Group), scales = "free", space = "free") +
-          theme(axis.text.x = element_blank(),
-                legend.position = "top",
-                panel.border = element_rect(color = "gray", fill = NA, size = 1))
 SVs_sig_diff_on_t_test <- c("GGAATATTGGACAATGGGCGAAAGCCTGATCCAGCCATGCCGCGTGTGTGAAGAAGGCCTTTTGGTTGTAAAGCACTTTAAGTGGGGAGGAAAAGCTTATGGTTAATACCCATAAGCCCTGACGTTACCCACAGAATAAGCACCGGCTAACTCTGTGCCAGCAGCCGCGGTAATACAGAGGGTGCAAGCGTTAATCGGAATTACTGGGCGTAAAGCGCGCGTAGGTGGTTATTTAAGTCAGATGTGAAAGCCCCGGGCTTAACCTGGGAACTGCATCTGATACTGGATAACTAGAGTAGGTGAGAGGGGAGTAGAATTCCAGGTGTAGCGGTGAAATGCGTAGAGATCTGGAGGAATACCGATGGCGAAGGCAGCTCCCTGGCATCATACTGACACTGAGGTGCGAAAGCGTGGGTAGCAAACAG",
                             "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG",
                             "GGAATCTTCCGCAATGGGCGAAAGCCTGACGGAGCAACGCCGCGTGAGTGATGAAGGTCTTCGGATCGTAAAACTCTGTTATTAGGGAAGAACAAATGTGTAAGTAACTATGCACGTCTTGACGGTACCTAATCAGAAAGCCACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTGGCAAGCGTTATCCGGAATTATTGGGCGTAAAGCGCGCGTAGGCGGTTTTTTAAGTCTGATGTGAAAGCCCACGGCTCAACCGTGGAGGGTCATTGGAAACTGGAAAACTTGAGTGCAGAAGAGGAAAGTGGAATTCCATGTGTAGCGGTGAAATGCGCAGAGATATGGAGGAACACCAGTGGCGAAGGCGACTTTCTGGTCTGTAACTGACGCTGATGTGCGAAAGCGTGGGGATCAAACAG",
@@ -980,7 +1007,7 @@ p1 <- subset(dat, !is.na(Genus)) %>%
         color = "red",
         show.legend = FALSE) +
       ylim(c(0, 1.05)) +
-      scale_color_paletteer_d("tvthemes::Alexandrite") +
+      scale_color_paletteer_d("LaCroixColoR::Lime") +
       facet_grid(cols = vars(Phylum), rows = vars(Group), scales = "free", space = "free") +
       theme(axis.text.x = element_blank(),
             legend.position = "top",
@@ -988,6 +1015,8 @@ p1 <- subset(dat, !is.na(Genus)) %>%
             panel.background = element_rect(color = "gray"))
 
 p1
+# "beyonce::X51"
+# "tvthemes::Alexandrite"
 
 p2 <- subset(dat, !is.na(Genus)) %>% 
   subset(Phylum != "Firmicutes") %>%
@@ -1000,7 +1029,7 @@ p2 <- subset(dat, !is.na(Genus)) %>%
         color = "red",
         show.legend = FALSE) +
       ylim(c(0, 1.05)) +
-      scale_color_paletteer_d("tvthemes::Alexandrite") +
+      scale_color_paletteer_d("lisa::OskarSchlemmer") +
       facet_grid(cols = vars(Phylum), rows = vars(Group), scales = "free", space = "free") +
       theme(axis.text.x = element_blank(),
             legend.position = "top",
@@ -1015,6 +1044,87 @@ ggarrange(plotlist = list(p1, p2),
   annotate_figure(top = text_grob("Core SVs: >1/10,000 Frequency and >0.35 Prevalence", 
                                   size = 19))
 ggsave("top_13_core_SVs_boxplot.png")
+
+### Simple t-tests -----------
+
+sig_SVs <- readRDS("sig_SVs.rds")
+
+sig_SVs_adj <- sig_SVs
+for (i in 1:nrow(sig_SVs_adj)) {
+  if (sig_SVs_adj$Abundance[i] == 0) {
+    sig_SVs_adj$Abundance[i] <- 0.0001
+  }
+}
+
+
+sig_SVs %>% subset(mean_abundance > 0.001) %>% ggplot() +
+  geom_boxplot(aes(x = SV, y = Abundance, color = Genus), outlier.shape = NA) +
+  geom_point(aes(x = SV, y = Abundance, color = Genus), alpha = 0.8, size = 1, position = position_jitter(width = 0.1)) +
+  # facet_grid(cols = vars(Phylum), rows = vars(Group), scales = "free", space = "free") +
+  facet_grid(rows = vars(Group)) +
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        panel.border = element_rect(color = "black", fill = NA, size = 1),
+        panel.background = element_rect(color = "gray")) +
+  ggtitle("SVs with p<0.05 Abundance Differences and Mean Abundance > 0.001")
+ggsave("t-test_top_SVs.png")
+
+sig_SVs_adj$special <- NA
+for (i in 1:nrow(sig_SVs_adj)) {
+  if (sig_SVs_adj$Genus[i] == "Streptococcus") {
+    sig_SVs_adj$Genus[i] <- "Streptococcus +"
+    sig_SVs_adj$special[i] <- 1}
+}
+
+for (i in 1:nrow(sig_SVs_adj)) {
+  if (!is.na(sig_SVs_adj$special[i])) {
+    sig_SVs_adj$special[i] <- 1.1}
+}
+
+sig_SVs_adj %>% ggplot() +
+  geom_boxplot(aes(x = reorder(SV, Abundance, decreasing = TRUE),
+                   y = Abundance, 
+                   # fill = Genus,
+                   color = Genus),
+               # labels = Genus,
+               outlier.shape = NA) +
+  geom_point(aes(x = reorder(SV, Abundance, decreasing = TRUE),
+                   y = Abundance, 
+                   color = Genus),
+              size = 1,
+              position = position_jitter(width = 0.2),
+             show.legend = FALSE) +
+  geom_point(
+    aes(x = reorder(SV, Abundance, decreasing = TRUE), 
+        y = special),
+    shape = "+", 
+    size = 6,
+    color = "red",
+    show.legend = FALSE) +
+  scale_y_continuous(trans = "log10", "Abundance, log10 scale", sec.axis = sec_axis(~ . , name = "Treatement Group")) +
+  xlab("SV; Grouped by Phylum") +
+  # scale_color_paletteer_d("lisa::OskarSchlemmer") +
+  facet_grid(rows = vars(Group), cols = vars(Phylum), space = "free", scales = "free") +
+  theme_bw() + # this puts the facet names in nice boxes
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "gray84", color = "black")
+        # panel.border = element_rect(color = "black", fill = NA, size = 1)
+        )  +
+  ggtitle("SVs with Significant Difference by t-test")
+ggsave("facets_t-test_signif_SVs.png")
+
+
+
+
+geom_point(
+  aes(x = SV, y = signif),
+  shape = "*", 
+  size = 8,
+  color = "red",
+  show.legend = FALSE) +
+
+
 ### Venn diagrams -----
 
 atb_phylo.coreW
@@ -1095,9 +1205,92 @@ ggsave("nmds_ordination_after_clean_and_rar_with_circles.png")
 # Forces a scaling
 # Might want to put in both
 
+uJ_nmds_bray <- ordinate(phylo_decontam_rar, #calculate similarities
+                    method = "NMDS", #ordination type
+                    "bray", binary = TRUE)
+
+plot_ordination(phylo_decontam_rar,
+                uJ_nmds_bray, type = "samples",
+                color = "Group") + #CHANGE ME
+  geom_point(aes(color = Group)) +
+  theme(legend.position = "top",
+        panel.border = element_rect(color = "gray", fill = NA, linewidth = 1)) +
+  # geom_point(aes(size = as.numeric(Weight_kg), color=as.factor(Week), alpha = as.factor(Week))) + # resize the points based on a numeric factor, and make light/dark based on another factor
+  # scale_color_viridis(discrete = TRUE, option="A", begin = 0, end = 0.75) + #begin/end indicates where on the color scale to use, A refers to 'magma' color palette
+  stat_ellipse(aes(group = Group, color = Group)) + #add circles around a particular grouping, and make the circle lines different
+  labs(color = "Treatment Group",
+       title = "NMDS Ordination",
+       subtitle = "After Cleaning and Rarefaction; Bray-Curtis Distance") #rename the headers in the legend
+# ggtitle("NMDS Ordination") #+
+# labs(color = "Weeks 0 to 2", size = "Weight in kg", shape = "Diet", linetype="Diet", alpha= "Week") #rename the headers in the legend
+ggsave("bray_nmds_ordination_after_clean_and_rar_with_circles.png")
 
 
 
+## Order test ---------
+
+phylo_species_then_decontam_rar <- readRDS("phylo_species_then_decontam_rar.rds")
+phylo_decontam_rar <- readRDS("phylo_decontam_rar.rds")
+
+
+list(
+  "Decontamination then Species Assignment" = row.names(phylo_decontam_rar@tax_table),
+  "Species Assignment then Decontamination" = row.names(phylo_species_then_decontam_rar@tax_table)
+) %>%
+  ggVennDiagram( set_size = 3) +
+  scale_x_continuous(expand = expansion(mult = 0.3)) +
+  theme(plot.title = element_text(face = "bold", size = 16, hjust = 0.1, vjust = -12),
+        legend.position = "none") +
+  coord_flip() +
+  ggtitle("SVs Found")
+
+# add ggvenn library to packages script if I end up using any of this
+
+# list(
+#   row.names(phylo_decontam_rar@tax_table),
+#   row.names(phylo_species_then_decontam_rar@tax_table)
+# ) %>%
+#   ggvenn()
+# 
+# # 
+# # ggvenn(columns = list(row.names(phylo_decontam_rar@tax_table),
+# #                         row.names(phylo_species_then_decontam_rar@tax_table)))
+#   
+# list(
+#   row.names(phylo_decontam_rar@tax_table),
+#   row.names(phylo_species_then_decontam_rar@tax_table)
+# ) %>%
+#   ggvenn(columns = c("Decontamination then Species Assignment",
+#                      "Species Assignment then Decontamination"))
+
+install.packages("eulerr")
+library(eulerr)
+
+dat <- list("Decontamination then Species Assignment" = row.names(phylo_decontam_rar@tax_table),
+  "Species Assignment then Decontamination" = row.names(phylo_species_then_decontam_rar@tax_table))
+
+# plot(euler(dat),
+#      fills = list(fill = c("Decontamination then Species Assignment" = "#54928D",
+#                   "Species Assignment then Decontamination" = "#941C50"),
+#                   alpha = 0.9))
+
+# I don't like that either, the output is not a ggplot object
+
+
+install.packages("VennDiagram")
+library(VennDiagram)
+
+# this kinda sucks because it goes to file and not the plot window
+venn.diagram(x = dat, 
+             filename = "order_of_operations.png",
+             imagetype = "png",
+             fill = c("yellow", "purple"),
+             main = "SVs Found, by Order of Cleaning Steps",
+             main.cex = 1.5,
+             cat.pos = c(320, 140),
+             cat.dist = c(0.1,0.1),
+             cat.just = list(c(0.2,-0.1), c(0.8,0)))
+             
 
 
 
