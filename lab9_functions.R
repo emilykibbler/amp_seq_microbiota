@@ -90,6 +90,41 @@ amalgamate_SV_data <- function(input_otu_table, group_name){
     temp$Group <- group_name
     temp$Abundance <- as.data.frame(input_otu_table)[,i]
     df <- rbind(df, temp)
+    
+    
   }
   return(df)
 }
+
+# the input_df is a df of SVs considered significant by statistical tests already done
+# input_phylo is what the input_df was made from
+
+SV_abundance_df_creator <- function(input_df, input_phylo) {
+  # the taxa I'll merge back into the data later
+  tax_key <- as.data.frame(input_phylo@tax_table)
+  tax_key$SV <- row.names(tax_key)
+  df <- left_join(input_df, tax_key, by = "SV")
+  
+  phylo_abundance <- microbiome::transform(input_phylo, "compositional")
+  abundance_df <- as.data.frame(phylo_abundance@otu_table)
+  # mean abundance per SV will make it easier for plotting to sort out the more abundant ones
+  abundance_means <- as.data.frame(cbind(colnames(abundance_df), 
+                                         colMeans(abundance_df)))
+  colnames(abundance_means) <- c("SV", "mean_abundance")
+  
+  abundance_df$SampleID <- row.names(abundance_df)
+  abundance_df <- pivot_longer(abundance_df, 
+                              cols = colnames(abundance_df)[1:length(abundance_df) - 1], # pivot everything except the last column, which we just added in: the SampleID
+                              names_to = "SV",
+                              values_to = "Abundance")
+  abundance_df <- left_join(abundance_df, 
+                             as.data.frame(input_phylo@sam_data)[,1:2],
+                             by = "SampleID")
+  
+  df <- left_join(df, abundance_df, by = "SV")
+  df <- left_join(df, abundance_means, by = "SV")
+  df$mean_abundance <- as.numeric(df$mean_abundance)
+  return(df)
+}
+
+

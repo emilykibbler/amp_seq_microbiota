@@ -216,11 +216,38 @@ phylo_ord <- ordinate(phylo, #calculate similarities
 
 plot_ordination(phylo, phylo_ord, type = "samples", color = "Group") +
   geom_point(size = 2.5) +
-  scale_color_hue(name = "Sample group", labels = c("Negative control", "No antibiotics", "Antibiotics")) +
-  theme(panel.border = element_rect(color = "gray", fill = NA, size = 1),
+  # scale_color_hue(name = "Sample group", labels = c("Lab negative control", "No antibiotics", "Antibiotics")) +
+  theme(#panel.border = element_rect(color = "black", size = 1),
+        panel.background = element_rect(fill = "gray84", color = "black"),
         legend.position = "top") +
-  ggtitle("Ordination Plot, Before Cleaning")
-ggsave("ordination_before_plot.png") # save this graph for later
+  ggtitle("Ordination Plot, Before Cleaning", subtitle = "Jaccard Distances")
+ggsave("jaccard_ordination_before_plot.png")
+
+phylo_ord <- ordinate(phylo, #calculate similarities
+                      method = "PCoA", #ordination type
+                      "bray", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted)
+plot_ordination(phylo, phylo_ord, type = "samples", color = "Group") +
+  geom_point(size = 2.5) +
+  # scale_color_hue(name = "Sample group", labels = c("Lab negative control", "No antibiotics", "Antibiotics")) +
+  theme(#panel.border = element_rect(color = "black", size = 1),
+    panel.background = element_rect(fill = "gray90", color = "black"),
+    legend.position = "top") +
+  ggtitle("Ordination Plot, Before Cleaning", subtitle = "Bray-curtis Distances")
+ggsave("bray_ordination_before_plot.png") 
+
+## Clean ordination plot -----
+phylo_ord <- ordinate(phylo_decontam_rar, #calculate similarities
+                      method = "PCoA", #ordination type
+                      "bray", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted)
+
+plot_ordination(phylo_decontam_rar, phylo_ord, type = "samples", color = "Group") +
+  geom_point(size = 2.5) +
+  # scale_color_hue(name = "Sample group", labels = c("Lab negative control", "No antibiotics", "Antibiotics")) +
+  theme(#panel.border = element_rect(color = "black", size = 1),
+    panel.background = element_rect(fill = "gray90", color = "black"),
+    legend.position = "top") +
+  ggtitle("Ordination Plot, After Cleaning and Rarefaction", subtitle = "Bray-curtis Distances")
+ggsave("bray_ordination_after_clean_plot.png") 
 
 ## Richness considering syndrome -------------
 phylo_decontam_rar <- readRDS("phylo_decontam_rar.rds")
@@ -501,16 +528,16 @@ phylo_decontam_rar_df <- subset(phylo_decontam_rar_df, select = -se.chao1)
 phylo_decontam_rar_df$Sample <- row.names(phylo_decontam_rar@sam_data)
 phylo_decontam_rar_df$Group <- phylo_decontam_rar@sam_data$Group
 phylo_decontam_rar_df <- pivot_longer(phylo_decontam_rar_df, c("Chao1", "Shannon"), names_to = "Metric")
-phylo_decontam_rar_df$Group <- str_replace_all(phylo_decontam_rar_df$Group, "No antibiotics", "Not exposed (n=22)")
-phylo_decontam_rar_df$Group <- str_replace_all(phylo_decontam_rar_df$Group, "Antibiotics", "Exposed (n=54)")
+phylo_decontam_rar_df$Group <- str_replace_all(phylo_decontam_rar_df$Group, "No antibiotics", "No antibiotics (n=22)")
+phylo_decontam_rar_df$Group <- str_replace_all(phylo_decontam_rar_df$Group, "Antibiotics", "Antibiotics (n=54)")
 phylo_decontam_rar_df$Group <- factor(phylo_decontam_rar_df$Group,
-                                      levels = c("Not exposed (n=22)", "Exposed (n=54)"))
+                                      levels = c("No antibiotics (n=22)", "Antibiotics (n=54)"))
 
-subset(phylo_decontam_rar_df, Group == "Not exposed (n=22)") %>%
+subset(phylo_decontam_rar_df, Group == "No antibiotics (n=22)") %>%
   subset(Metric == "Chao1") %>%
     nrow() # yes, 22
 
-subset(phylo_decontam_rar_df, Group == "Not exposed (n=22)") %>%
+subset(phylo_decontam_rar_df, Group == "No antibiotics (n=22)") %>%
   subset(Metric == "Chao1") %>%
     view()
 
@@ -970,11 +997,7 @@ amalgamate_SV_data <- function(input_otu_table, group_name){
 dat <- data.frame(matrix(nrow = 0, ncol = 3))
 colnames(dat) <- c("SV", "Group", "Abundance")
 dat <- rbind(dat, amalgamate_SV_data(atb_phylo.coreW_35@otu_table, "Antibiotics"))
-  # length(unique(colnames(atb_phylo.coreW_35@otu_table)))
-  # unique(colnames(atb_phylo.coreW_35@otu_table))
-  # length(unique(dat$SV))
-  # head(dat)
-  # dim(dat)
+
 dat <- rbind(dat, amalgamate_SV_data(no_atb_phylo.coreW_35@otu_table, "No antibiotics"))
 head(dat)
 dim(dat)
@@ -1045,9 +1068,48 @@ ggarrange(plotlist = list(p1, p2),
                                   size = 19))
 ggsave("top_13_core_SVs_boxplot.png")
 
+# playing with where the stars are
+for (i in 1:nrow(dat)) {
+  if (!is.na(dat$signif[i])) {
+    dat$signif[i] <- 1.2
+  }
+}
+
+dat %>% ggplot() +
+  geom_boxplot(aes(x = SV, # reorder(SV, Abundance, decreasing = TRUE),
+                   y = Abundance, 
+                   # fill = Genus,
+                   color = Genus),
+               # labels = Genus,
+               outlier.shape = NA) +
+  geom_point(aes(x = SV,
+                 y = Abundance, 
+                 color = Genus),
+             size = 1,
+             position = position_jitter(width = 0.2),
+             show.legend = FALSE) +
+  geom_point(
+    aes(x = SV, y = signif),
+    shape = "*", 
+    size = 8,
+    color = "red",
+    show.legend = FALSE) +
+  scale_y_continuous(trans = "log10", "Abundance, log10 scale", sec.axis = sec_axis(~ . , name = "Treatement Group")) +
+  xlab("SV; Grouped by Phylum") +
+  # scale_color_paletteer_d("lisa::OskarSchlemmer") +
+  facet_grid(rows = vars(Group), cols = vars(Phylum), space = "free", scales = "free") +
+  theme_bw() + # this puts the facet names in nice boxes
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "gray84", color = "black")
+        # panel.border = element_rect(color = "black", fill = NA, size = 1)
+  )  +
+  ggtitle("Core SVs: >1/10,000 Frequency and >0.35 Prevalence", subtitle = "Defined Using core Function of Microbiome Package")
+ggsave("core_SVs_log_y_scale.png")
+
 ### Simple t-tests -----------
 
-sig_SVs <- readRDS("sig_SVs.rds")
+sig_SVs <- readRDS("t_test_sig_SVs.rds")
 
 sig_SVs_adj <- sig_SVs
 for (i in 1:nrow(sig_SVs_adj)) {
@@ -1082,20 +1144,20 @@ for (i in 1:nrow(sig_SVs_adj)) {
 }
 
 sig_SVs_adj %>% ggplot() +
-  geom_boxplot(aes(x = reorder(SV, Abundance, decreasing = TRUE),
+  geom_boxplot(aes(x = SV, # reorder(SV, Abundance, decreasing = TRUE),
                    y = Abundance, 
                    # fill = Genus,
                    color = Genus),
                # labels = Genus,
                outlier.shape = NA) +
-  geom_point(aes(x = reorder(SV, Abundance, decreasing = TRUE),
+  geom_point(aes(x = SV,
                    y = Abundance, 
                    color = Genus),
               size = 1,
               position = position_jitter(width = 0.2),
              show.legend = FALSE) +
   geom_point(
-    aes(x = reorder(SV, Abundance, decreasing = TRUE), 
+    aes(x = SV, 
         y = special),
     shape = "+", 
     size = 6,
@@ -1114,15 +1176,65 @@ sig_SVs_adj %>% ggplot() +
   ggtitle("SVs with Significant Difference by t-test")
 ggsave("facets_t-test_signif_SVs.png")
 
+### Wilcoxon tests --------
+
+wilcox_sig_SVs <- readRDS("wilcox_sig_SVs.rds")
+
+sig_SVs_adj <- wilcox_sig_SVs
+for (i in 1:nrow(sig_SVs_adj)) {
+  if (sig_SVs_adj$Abundance[i] == 0) {
+    sig_SVs_adj$Abundance[i] <- 0.0001
+  }
+}
+
+
+sig_SVs_adj$special <- NA
+for (i in 1:nrow(sig_SVs_adj)) {
+  if (sig_SVs_adj$Genus[i] == "Streptococcus") {
+    sig_SVs_adj$Genus[i] <- "Streptococcus +"
+    sig_SVs_adj$special[i] <- 1.1}
+}
+
+for (i in 1:nrow(sig_SVs_adj)) {
+  if (!is.na(sig_SVs_adj$special[i])) {
+    sig_SVs_adj$special[i] <- 2}
+}
+
+sig_SVs_adj %>% ggplot() +
+  geom_boxplot(aes(x = SV, # reorder(SV, Abundance, decreasing = TRUE),
+                   y = Abundance, 
+                   # fill = Genus,
+                   color = Genus),
+               # labels = Genus,
+               outlier.shape = NA) +
+  geom_point(aes(x = SV,
+                 y = Abundance, 
+                 color = Genus),
+             size = 1,
+             position = position_jitter(width = 0.2),
+             show.legend = FALSE) +
+  geom_point(
+    aes(x = SV, 
+        y = special),
+    shape = "+", 
+    size = 6,
+    color = "red",
+    show.legend = FALSE) +
+  scale_y_continuous(trans = "log10", "Abundance, log10 scale", sec.axis = sec_axis(~ . , name = "Treatement Group")) +
+  xlab("SV; Grouped by Phylum") +
+  # scale_color_paletteer_d("lisa::OskarSchlemmer") +
+  facet_grid(rows = vars(Group), cols = vars(Phylum), space = "free", scales = "free") +
+  theme_bw() + # this puts the facet names in nice boxes
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "gray84", color = "black")
+        # panel.border = element_rect(color = "black", fill = NA, size = 1)
+  )  +
+  ggtitle("SVs with Significant Difference by Wilcoxon Test")
+ggsave("facets_wilcox_signif_SVs.png")
 
 
 
-geom_point(
-  aes(x = SV, y = signif),
-  shape = "*", 
-  size = 8,
-  color = "red",
-  show.legend = FALSE) +
 
 
 ### Venn diagrams -----
@@ -1144,12 +1256,42 @@ list(
   theme(plot.title = element_text(face = "bold", size = 16)) +
   ggtitle("Core SVs by Genus")
 
+### Strepto focus --------
+
+strep_abun_df <- readRDS("strep_abun_df.rds")
+length(unique(strep_abun_df$SV)) # 61 is going to make a crazy plot
+summary(strep_abun_df$mean_abundance) # 3rd quartile starts at 0.0026
+for (i in 1:nrow(strep_abun_df)) { # makes log transform possible
+  if (strep_abun_df$Abundance[i] == 0) {
+    strep_abun_df$Abundance[i] <- 0.001
+  }
+}
+
+for (i in 1:nrow(strep_abun_df)) { # makes log transform possible
+  if (is.na(strep_abun_df$Species[i])) {
+    strep_abun_df$Species[i] <- "Undefined"
+  }
+}
+
+strep_abun_df %>%
+  subset(mean_abundance > 0.006) %>% 
+    ggplot(aes(x = SV_name, y = Abundance)) +
+    geom_boxplot(aes(color = Species), outlier.shape = NA) +
+    geom_point(aes(color = Species), position = position_jitter(width = 0.1)) +
+    scale_y_continuous(transform = "log10", limits = c(0.0001,1.1)) +
+    facet_wrap(~Group, ncol = 1, scales = "free") +
+    xlab("SV") +
+    ylab("Relative Abundance of Streptococcus Reads") +
+    theme_bw() +
+    theme(axis.text.x = element_blank()) +
+    ggtitle("Most Abundant Streptococcus SVs")
+
 
 ## DEseq plot -----
 sigtab <- readRDS("sigtab.rds")
 ggplot(sigtab, aes(y = Genus, x = log2FoldChange, color = Phylum)) + #play with aesthetics to make graph informative
   geom_vline(xintercept = 0.0, color = "gray", linewidth = 0.5) +
-  geom_point(aes(size = baseMean)) + #scale size by mean relative abundance
+  geom_point(aes(size = baseMean), position = position_jitter(width = 0.1)) + #scale size by mean relative abundance
   scale_size_continuous(range = c(3, 8)) +
   theme(axis.text.x = element_text(hjust = 0, vjust = 0.5, size = 10), 
         axis.text.y = element_text(size = 11),

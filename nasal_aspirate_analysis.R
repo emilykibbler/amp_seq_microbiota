@@ -901,10 +901,12 @@ source("~/Desktop/projects/R/AVS_554/lab9_functions.R")
 phylo.coreW_25 <- core_taxa_finder(phylo_decontam_rar, c(1/10000, 25/100))
 saveRDS(phylo.coreW_25, "phylo.coreW_25.rds")
 
-
+phylo.coreW_25_SV_seqs <- row.names(phylo.coreW_25@tax_table)
+length(phylo.coreW_25_SV_seqs) # 25
 
 phylo.coreW_35 <- core_taxa_finder(phylo_decontam_rar, c(1/10000, 35/100))
 saveRDS(phylo.coreW_35, "phylo.coreW_35.rds")
+phylo.coreW_35_SV_seqs <- row.names(phylo.coreW_35@tax_table)
 
 prevalences <- seq(.05, 1, .05)
 detections <- round(10^seq(log10(1e-4), log10(.2), length = 10), 3)
@@ -923,13 +925,13 @@ for (i in 1:ncol(phylo.coreW_35@otu_table)) {
   print(t.test(atb_phylo.coreW_35@otu_table[,i], no_atb_phylo.coreW_35@otu_table[,i]))
 }
 
-SVs_sig_diff_on_t_test <- c("GGAATATTGGACAATGGGCGAAAGCCTGATCCAGCCATGCCGCGTGTGTGAAGAAGGCCTTTTGGTTGTAAAGCACTTTAAGTGGGGAGGAAAAGCTTATGGTTAATACCCATAAGCCCTGACGTTACCCACAGAATAAGCACCGGCTAACTCTGTGCCAGCAGCCGCGGTAATACAGAGGGTGCAAGCGTTAATCGGAATTACTGGGCGTAAAGCGCGCGTAGGTGGTTATTTAAGTCAGATGTGAAAGCCCCGGGCTTAACCTGGGAACTGCATCTGATACTGGATAACTAGAGTAGGTGAGAGGGGAGTAGAATTCCAGGTGTAGCGGTGAAATGCGTAGAGATCTGGAGGAATACCGATGGCGAAGGCAGCTCCCTGGCATCATACTGACACTGAGGTGCGAAAGCGTGGGTAGCAAACAG",
+core_SVs_sig_diff_on_t_test <- c("GGAATATTGGACAATGGGCGAAAGCCTGATCCAGCCATGCCGCGTGTGTGAAGAAGGCCTTTTGGTTGTAAAGCACTTTAAGTGGGGAGGAAAAGCTTATGGTTAATACCCATAAGCCCTGACGTTACCCACAGAATAAGCACCGGCTAACTCTGTGCCAGCAGCCGCGGTAATACAGAGGGTGCAAGCGTTAATCGGAATTACTGGGCGTAAAGCGCGCGTAGGTGGTTATTTAAGTCAGATGTGAAAGCCCCGGGCTTAACCTGGGAACTGCATCTGATACTGGATAACTAGAGTAGGTGAGAGGGGAGTAGAATTCCAGGTGTAGCGGTGAAATGCGTAGAGATCTGGAGGAATACCGATGGCGAAGGCAGCTCCCTGGCATCATACTGACACTGAGGTGCGAAAGCGTGGGTAGCAAACAG",
                             "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG",
                             "GGAATCTTCCGCAATGGGCGAAAGCCTGACGGAGCAACGCCGCGTGAGTGATGAAGGTCTTCGGATCGTAAAACTCTGTTATTAGGGAAGAACAAATGTGTAAGTAACTATGCACGTCTTGACGGTACCTAATCAGAAAGCCACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTGGCAAGCGTTATCCGGAATTATTGGGCGTAAAGCGCGCGTAGGCGGTTTTTTAAGTCTGATGTGAAAGCCCACGGCTCAACCGTGGAGGGTCATTGGAAACTGGAAAACTTGAGTGCAGAAGAGGAAAGTGGAATTCCATGTGTAGCGGTGAAATGCGCAGAGATATGGAGGAACACCAGTGGCGAAGGCGACTTTCTGGTCTGTAACTGACGCTGATGTGCGAAAGCGTGGGGATCAAACAG",
                             "GGAATATTGCACAATGGGCGCAAGCCTGATGCAGCGACGCCGCGTGGGGGATGACGGCCTTCGGGTTGTAAACTCCTTTCGCCAGGGACGAAGCGTTTTGTGACGGTACCTGGAGAAGAAGCACCGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGGTGCAAGCGTTGTCCGGAATTACTGGGCGTAAAGAGCTCGTAGGTGGTTTGTCACGTCGTCTGTGAAATTCCACAGCTTAACTGTGGGCGTGCAGGCGATACGGGCTGACTTGAGTACTGTAGGGGTAACTGGAATTCCTGGTGTAGCGGTGAAATGCGCAGATATCAGGAGGAACACCGATGGCGAAGGCAGGTTACTGGGCAGTTACTGACGCTGAGGAGCGAAAGCATGGGTAGCAAACAG",
                             "GGAATATTGCACAATGGGCGCAAGCCTGATGCAGCGACGCCGCGTGGGGGATGACGGCCTTCGGGTTGTAAACTCCTTTCGCCAGGGACGAAGCGTTTTGTGACGGTACCTGGAGAAGAAGCACCGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGGTGCAAGCGTTGTCCGGAATTACTGGGCGTAAAGAGCTCGTAGGTGGTTTGTCACGTCGTCTGTGAAATTCCACAGCTTAACTGTGGGCGTGCAGGCGATACGGGCTGACTTGAGTACTGTAGGGGTAACTGGAATTCCTGGTGTAGCGGTGAAATGCGCAGATATCAGGAGGAACACCGATGGCGAAGGCAGGTTACTGGGCAGTTACTGACGCTGAGGAGCGAAAGCATGGGTAGCAAACAG")
 # in case I got confused and pasted something twice
-SVs_sig_diff_on_t_test <- unique(SVs_sig_diff_on_t_test)
+core_SVs_sig_diff_on_t_test <- unique(SVs_sig_diff_on_t_test)
 
 aligns_to_AY_in_paper <- "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG"
 
@@ -938,7 +940,7 @@ t.test(atb_phylo.coreW_35@otu_table[,aligns_to_AY_in_paper], no_atb_phylo.coreW_
 aligns_to_HG_in_paper <- "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG"
 t.test(atb_phylo.coreW_35@otu_table[,aligns_to_HG_in_paper], no_atb_phylo.coreW_35@otu_table[,aligns_to_HG_in_paper])
 
-### Simple method ------------
+### Simple method: t-tests ------------
 
 # this is the one with SVs as colnames, sample as row names, and read numbers as values
 view(phylo_decontam_rar@otu_table)
@@ -949,12 +951,13 @@ phylo_decontam_rar_atb <- subset_samples(phylo_decontam_rar, Group == "Antibioti
 phylo_decontam_rar_no_atb <- subset_samples(phylo_decontam_rar, Group == "No antibiotics")
 
 phylo_decontam_rar_atb_otu <- as.data.frame(phylo_decontam_rar_atb@otu_table)
-dim(phylo_decontam_rar_atb_otu)
+saveRDS(phylo_decontam_rar_atb_otu, "phylo_decontam_rar_atb_otu.rds")
 phylo_decontam_rar_no_atb_otu <- as.data.frame(phylo_decontam_rar_no_atb@otu_table)
-dim(phylo_decontam_rar_no_atb_otu)
+saveRDS(phylo_decontam_rar_no_atb_otu, "phylo_decontam_rar_no_atb_otu.rds")
 
 sig_SVs <- data.frame(matrix(nrow = 0, ncol = 2))
 colnames(sig_SVs) <- c("SV", "p-value")
+
 
 # unlist(t.test(phylo_decontam_rar_atb_otu[,1], phylo_decontam_rar_no_atb_otu[,1]))
 
@@ -965,35 +968,68 @@ for (i in 1:ncol(phylo_decontam_rar_atb_otu)) {
 }
 
 dim(sig_SVs)
-tax_key <- as.data.frame(phylo_decontam_rar@tax_table)
-tax_key$SV <- row.names(tax_key)
-sig_SVs <- left_join(sig_SVs, tax_key, by = "SV")
 
-phylo_decontam_rar_abundance <- microbiome::transform(phylo_decontam_rar, "compositional")
-phylo_decontam_rar_abundance_df <- as.data.frame(phylo_decontam_rar_abundance@otu_table)
-abundance_means <- as.data.frame(cbind(colnames(phylo_decontam_rar_abundance_df), colMeans(phylo_decontam_rar_abundance_df)))
-colnames(abundance_means) <- c("SV", "mean_abundance")
+  # this was how I did it originally, manually. the function is now in lab9_functions
 
-phylo_decontam_rar_abundance_df$SampleID <- row.names(phylo_decontam_rar_abundance_df)
-phylo_decontam_rar_abundance_df <- pivot_longer(phylo_decontam_rar_abundance_df, 
-                                                cols = colnames(phylo_decontam_rar_abundance_df)[1:length(phylo_decontam_rar_abundance_df) - 1],
-                                                names_to = "SV",
-                                                values_to = "Abundance")
-phylo_decontam_rar_abundance_df <- left_join(phylo_decontam_rar_abundance_df, 
-                                             as.data.frame(phylo_decontam_rar_abundance@sam_data)[,1:2],
-                                             by = "SampleID")
+      # the taxa I'll merge back into the data later
+      # tax_key <- as.data.frame(phylo_decontam_rar@tax_table)
+      # tax_key$SV <- row.names(tax_key)
+      # sig_SVs <- left_join(sig_SVs, tax_key, by = "SV")
+      # 
+      # phylo_decontam_rar_abundance <- microbiome::transform(phylo_decontam_rar, "compositional")
+      # phylo_decontam_rar_abundance_df <- as.data.frame(phylo_decontam_rar_abundance@otu_table)
+      # # mean abundance per SV will make it easier for plotting to sort out the more abundant ones
+      # abundance_means <- as.data.frame(cbind(colnames(phylo_decontam_rar_abundance_df), 
+      #                                        colMeans(phylo_decontam_rar_abundance_df)))
+      # colnames(abundance_means) <- c("SV", "mean_abundance")
+      # 
+      # phylo_decontam_rar_abundance_df$SampleID <- row.names(phylo_decontam_rar_abundance_df)
+      # phylo_decontam_rar_abundance_df <- pivot_longer(phylo_decontam_rar_abundance_df, 
+      #                                                 cols = colnames(phylo_decontam_rar_abundance_df)[1:length(phylo_decontam_rar_abundance_df) - 1],
+      #                                                 names_to = "SV",
+      #                                                 values_to = "Abundance")
+      # phylo_decontam_rar_abundance_df <- left_join(phylo_decontam_rar_abundance_df, 
+      #                                              as.data.frame(phylo_decontam_rar_abundance@sam_data)[,1:2],
+      #                                              by = "SampleID")
+      # 
+      # sig_SVs <- left_join(sig_SVs, phylo_decontam_rar_abundance_df, by = "SV")
+      # sig_SVs <- left_join(sig_SVs, abundance_means, by = "SV")
+      # sig_SVs$mean_abundance <- as.numeric(sig_SVs$mean_abundance)
+      # view(sig_SVs)
 
-sig_SVs <- left_join(sig_SVs, phylo_decontam_rar_abundance_df, by = "SV")
-sig_SVs <- left_join(sig_SVs, abundance_means, by = "SV")
-sig_SVs$mean_abundance <- as.numeric(sig_SVs$mean_abundance)
-view(sig_SVs)
+t_test_sig_SVs <- SV_abundance_df_creator(sig_SVs, phylo_decontam_rar) # in lab9_functions.R
+
 ASV3 <- "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG"
-ASV3 %in% unique(sig_SVs$SV)
-view(subset(sig_SVs, SV == ASV3))
+ASV3 %in% unique(t_test_sig_SVs$SV)
+view(subset(t_test_sig_SVs, SV == ASV3))
 
-my_t_test_sig_SV_sequences <- unique(sig_SVs$SV)
+my_t_test_sig_SV_sequences <- unique(t_test_sig_SVs$SV)
 
-saveRDS(sig_SVs, "sig_SVs.rds")
+saveRDS(t_test_sig_SVs, "t_test_sig_SVs.rds")
+
+### Simple method: Wilcoxon tests -------
+
+wilcox_sig_SVs <- data.frame(matrix(nrow = 0, ncol = 2))
+colnames(wilcox_sig_SVs) <- c("SV", "p-value")
+
+
+# unlist(t.test(phylo_decontam_rar_atb_otu[,1], phylo_decontam_rar_no_atb_otu[,1]))
+# wilcox.test(phylo_decontam_rar_atb_otu[,1], phylo_decontam_rar_no_atb_otu[,1])
+# unlist(wilcox.test(phylo_decontam_rar_atb_otu[,1], phylo_decontam_rar_no_atb_otu[,1]))
+# unlist(wilcox.test(phylo_decontam_rar_atb_otu[,1], phylo_decontam_rar_no_atb_otu[,1]))[2]
+
+for (i in 1:ncol(phylo_decontam_rar_atb_otu)) {
+  if (unlist(wilcox.test(phylo_decontam_rar_atb_otu[,i], phylo_decontam_rar_no_atb_otu[,i]))[2] < 0.05) {
+    wilcox_sig_SVs[nrow(wilcox_sig_SVs) + 1, ] <- c(colnames(phylo_decontam_rar_atb_otu)[i], 
+                                                    unlist(wilcox.test(phylo_decontam_rar_atb_otu[,i], 
+                                                                       phylo_decontam_rar_no_atb_otu[,i]))[2])
+  }
+}
+
+wilcox_sig_SVs <- SV_abundance_df_creator(wilcox_sig_SVs, phylo_decontam_rar)
+saveRDS(wilcox_sig_SVs, "wilcox_sig_SVs.rds")
+
+wilcox_test_sig_SV_sequences <- unique(wilcox_sig_SVs$SV)
 
 # Lab 10: Comparing changes in taxonomy (Lab 10) ---------------------------------
 ## Focusing on a single taxon -------
@@ -1021,6 +1057,36 @@ head(MySummary)
 ggplot(data = MySummary, aes(x = Group, y = mean_abund)) +
   geom_point(aes(color = Group)) +
   ylab("Mean relative abundance of reads")
+
+### Streptococcus focus ------
+
+strep_phylo <- subset_taxa(phylo_decontam_rar, Genus == "Streptococcus")
+strep_phylo_abun <- microbiome::transform(strep_phylo, "compositional")
+strep_abun_df <- as.data.frame(strep_phylo_abun@otu_table)
+abundance_means <- as.data.frame(cbind(colnames(strep_abun_df), colMeans(strep_abun_df)))
+colnames(abundance_means) <- c("SV", "mean_abundance")
+
+strep_abun_df$SampleID <- row.names(strep_abun_df)
+strep_abun_df <- pivot_longer(strep_abun_df, 
+                              cols = colnames(strep_abun_df)[1:length(strep_abun_df) - 1],
+                              names_to = "SV",
+                              values_to = "Abundance")
+strep_abun_df <- left_join(strep_abun_df, 
+                           as.data.frame(strep_phylo_abun@sam_data)[,1:2],
+                           by = "SampleID")
+
+tax_key <- as.data.frame(strep_phylo@tax_table)
+tax_key$SV <- row.names(tax_key)
+tax_key$SV_name <- NA
+for (i in 1:nrow(tax_key)) {
+  tax_key$SV_name[i] <- paste0("StrepSV", i)
+}
+
+strep_abun_df <- left_join(strep_abun_df, tax_key, by = "SV")
+strep_abun_df <- left_join(strep_abun_df, abundance_means, by = "SV")
+strep_abun_df$mean_abundance <- as.numeric(strep_abun_df$mean_abundance)
+
+saveRDS(strep_abun_df, "strep_abun_df.rds")
 
 
 
@@ -1099,6 +1165,23 @@ sigtab$Genus = ifelse(is.na(sigtab$Genus), paste(sigtab$Family),paste(sigtab$Gen
 sigtab$Genus.species <- paste(sigtab$Genus, sigtab$Species) # I ran this but it doesn't change the plot
 
 saveRDS(sigtab, "sigtab.rds")
+
+sigtab <- readRDS("sigtab.rds")
+# this is defined above in the "core community members" section, "simple method" subsection
+length(my_t_test_sig_SV_sequences) # I got 15
+DEseq_sig_SV_sequences <- row.names(sigtab)
+length(DEseq_sig_SV_sequences) # they got 17
+length(which(my_t_test_sig_SV_sequences %in% DEseq_sig_SV_sequences))
+# oh no, I only got two of theirs
+
+# from above in the "core community members" section
+phylo.coreW_35_SV_seqs %in% DEseq_sig_SV_sequences # only one commonality yikes on bikes
+phylo.coreW_35_SV_seqs %in% my_t_test_sig_SV_sequences # four in common
+# quick peek, if I use this in the paper I'll make it nice and put it in the plot script
+ggVennDiagram(list(DEseq_sig_SV_sequences, my_t_test_sig_SV_sequences, wilcox_test_sig_SV_sequences),
+              category.names = c("DEseq", "t-test", "Wilcoxon Test")) +
+  theme(legend.position = "none") +
+  ggtitle("Significant SVs, as Defined by Different Methods")
 
 ## graph differential abundance
 # in separate plot script
