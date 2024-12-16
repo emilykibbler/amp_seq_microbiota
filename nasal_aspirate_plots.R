@@ -124,18 +124,22 @@ plotData$type <- factor(plotData$type, levels = c("reads.in", "filtered", "nonch
 
 
 # or, plot with QA stage along the X axis
-plotData$Sample_type <- factor(plotData$Sample_type, levels = c("experimental", "negative"), labels = c("Patient", "Negative control"))
+plotData$Sample_type <- factor(plotData$Sample_type, levels = c("experimental", "negative"), labels = c("Patient", "Lab negative control"))
 
-ggplot(plotData, aes(x = type, y = as.numeric(totals))) +
-  geom_jitter(aes(color = Sample_type)) + 
+ggplot(plotData, aes(x = Sample_type, y = as.numeric(totals))) +
   geom_boxplot(aes(color = Sample_type)) +
+  geom_jitter(aes(color = Sample_type), width = 0.1) + 
+  facet_grid(cols = vars(type)) +
   scale_color_hue(name = "Sample type") +
   ylab("Sequences") + 
   xlab("QA stage") +
-  theme(axis.text.x = element_text(angle = 0, size = 12),
+  theme(axis.text.x = element_text(angle = 0, size = 10),
         axis.title.x = element_text(size = 14),
         panel.border = element_rect(color = "gray", fill = NA, size = 1),
         legend.position = "top",
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        panel.background = element_rect(fill = "gray85"),
         plot.title = element_text(size = 16, face = "bold")) +
   ggtitle("Reads by filtering step")
 ggsave("reads_sample_type_QC_status.png")

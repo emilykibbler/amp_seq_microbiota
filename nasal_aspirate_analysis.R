@@ -591,7 +591,7 @@ saveRDS(phylo_decontam_no_strep_rar, 'phylo_decontam_no_strep_rar.rds')
 # plot alpha diversity with phyloseq: https://www.rdocumentation.org/packages/phyloseq/versions/1.16.2/topics/plot_richness. 
 # measures include c("Observed", "Chao1", "ACE", "Shannon", "Simpson", "InvSimpson", "Fisher")
 
-### Alpha diversity plotting ------------------
+# Alpha diversity plotting
 
 # This script was getting too long and busy so I have split the plotting
 # See separate .R file named nasal_aspirate_plots
@@ -632,6 +632,8 @@ ggplot(phylo_rar_rich_df, aes(x = Group, y = Observed)) +
 
 ### skipped, maybe come back later --------
 
+# these plots are not as informative for my data since it's really just the one variable that matters
+
 # # make that same graph but drop any samples that lack data for that FactorA (replace FactorA in the code with your factor name).
 # ggplot(data=subset(EX_ps_clean.rar.rich.df, !is.na(FactorA)), aes(x=Temperature, y=Observed)) + 
 #   theme_minimal() + 
@@ -667,6 +669,15 @@ alpha_diversity_table
 
 phylo_decontam_rar_rich <- estimate_richness(phylo_decontam_rar, measures = c("Chao1", "Observed", "Shannon")) #change to whatever measures you want
 saveRDS(phylo_decontam_rar_rich, "phylo_decontam_rar_rich.rds")
+phylo_decontam_rar_rich$SampleID <- phylo_decontam_rar@sam_data$SampleID
+phylo_decontam_rar_rich$Group <- phylo_decontam_rar@sam_data$Group
+
+atb_rich <- subset(phylo_decontam_rar_rich, Group == "Antibiotics")
+no_atb_rich <- subset(phylo_decontam_rar_rich, Group == "No antibiotics")
+
+wilcox.test(atb_rich$Chao1, no_atb_rich$Chao1) # p = 0.001
+wilcox.test(atb_rich$Shannon, no_atb_rich$Shannon) # p = 0.030
+
 # use phyloseq to calculate Faith's Diversity metric (optional), https://rdrr.io/github/twbattaglia/btools/man/estimate_pd.html
 # EX_faith <- estimate_pd(EX_ps_clean.rar)
 
@@ -1196,6 +1207,7 @@ ggVennDiagram(list(DEseq_sig_SV_sequences, my_t_test_sig_SV_sequences, wilcox_te
               category.names = c("DEseq", "t-test", "Wilcoxon Test")) +
   theme(legend.position = "none") +
   ggtitle("Significant SVs, as Defined by Different Methods")
+# note, not using this venn diagram in the paper, so leaving the quick-and-dirty plot here instead of moving to plot-specific script
 
 ## graph differential abundance
 # in separate plot script
@@ -2024,7 +2036,7 @@ cap_plot +
     show.legend = FALSE
   ) 
 
-
+## Done up tp here --------
 
 ## variance partitioning --------------
 # How much did any one factor contribute to the sample clustering?
@@ -2033,17 +2045,17 @@ cap_plot +
 library(vegan)
 
 # create a dataframe from your SV table
-EX.df <- as.data.frame(otu_table(EX_ps_clean.rar))
+df <- as.data.frame(otu_table(phylo_decontam_rar))
 
 # extract your sample data from the phyloseq object
-env.df <- as.data.frame(sample_data(EX_ps_clean.rar))
+env.df <- as.data.frame(sample_data(phylo_decontam_rar))
 
 
 # calculate Principal Coordinates Of Neighborhood Matrix, diversity distance data transformed into rectangular format
-EX.pcnm <- pcnm(dist(bray_not_na))
+pcnm <- pcnm(dist(bray_not_na))
 
 # environmental variables as predictors of community similarity
-cap.env <- capscale(EX.df ~ ., data=env.df, distance='bray')
+cap.env <- capscale(df ~ ., data = env.df, distance = 'bray')
 
 # calculate CCA 
 cap.pcnm <- capscale(EX.df ~ ., data=as.data.frame(scores(EX.pcnm)), distance='bray')

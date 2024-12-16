@@ -170,6 +170,22 @@ for (i in 1:length(SVs_sig_diff_on_t_test)) {
   }
 }
 
+the_hg_one <- "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG"
+
+phylo_decontam_rar_atb <- subset_samples(phylo_decontam_rar, Group == "Antibiotics")
+phylo_decontam_rar_no_atb <- subset_samples(phylo_decontam_rar, Group == "No antibiotics")
+
+
+wilcox.test(phylo_decontam_rar_atb@otu_table[,the_hg_one],
+            phylo_decontam_rar_no_atb@otu_table[,the_hg_one])
+
+
+# t.test(phylo_decontam_rar_atb@otu_table[,the_hg_one],
+#             phylo_decontam_rar_no_atb@otu_table[,the_hg_one])
+
+
+
+
 my_top_SVs <- colnames(atb_phylo.coreW_35@otu_table)
          
 for (i in 1:length(my_top_SVs)) {
@@ -299,9 +315,14 @@ for (i in 1:5) {
 # I think what I am calling strepASV2 is what they are calling ASV3
 
 
+the_ay_one <- "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTAGGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG"
 
 
+wilcox.test(phylo_decontam_rar_atb@otu_table[,the_ay_one],
+            phylo_decontam_rar_no_atb@otu_table[,the_ay_one])
+# is significant by wilcox test
 
-
-
+t.test(phylo_decontam_rar_atb@otu_table[,the_ay_one],
+            phylo_decontam_rar_no_atb@otu_table[,the_ay_one])
+# not significant by t-test
 
