@@ -898,12 +898,12 @@ p3 <- plot_core(no_atb_plot.gen,
   ggtitle("Core SVs, No Antibiotics")
 
 ggarrange(plotlist = list(p1, p2, p3),
-          # labels = c("A", "B", "C"),
+          labels = c("A", "B", "C"),
           common.legend = TRUE,
           nrow = 1,
           ncol = 3,
-          legend = "bottom")# %>%
-  # annotate_figure(top = text_grob("Before cleaning alpha diversity plots", size = 16))
+          legend = "bottom") %>%
+  annotate_figure(top = text_grob("Core SVs; Frequency >1/10000 and Prevalence > 0.25", size = 16))
 ggsave("core_SV_heatmaps.png")
 
 ggarrange(plotlist = list(p1, p2, p3),
@@ -911,8 +911,8 @@ ggarrange(plotlist = list(p1, p2, p3),
           common.legend = TRUE,
           nrow = 3,
           ncol = 1,
-          legend = "bottom")# %>%
-# annotate_figure(top = text_grob("Before cleaning alpha diversity plots", size = 16))
+          legend = "bottom") # %>%
+#annotate_figure(top = text_grob("Before cleaning alpha diversity plots", size = 16))
 ggsave("vertical_core_SV_heatmaps.png")
 
 # Again with stricter criteria
@@ -1012,10 +1012,22 @@ SVs_sig_diff_on_t_test <- c("GGAATATTGGACAATGGGCGAAAGCCTGATCCAGCCATGCCGCGTGTGTGA
                             "GGAATCTTCCGCAATGGGCGAAAGCCTGACGGAGCAACGCCGCGTGAGTGATGAAGGTCTTCGGATCGTAAAACTCTGTTATTAGGGAAGAACAAATGTGTAAGTAACTATGCACGTCTTGACGGTACCTAATCAGAAAGCCACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTGGCAAGCGTTATCCGGAATTATTGGGCGTAAAGCGCGCGTAGGCGGTTTTTTAAGTCTGATGTGAAAGCCCACGGCTCAACCGTGGAGGGTCATTGGAAACTGGAAAACTTGAGTGCAGAAGAGGAAAGTGGAATTCCATGTGTAGCGGTGAAATGCGCAGAGATATGGAGGAACACCAGTGGCGAAGGCGACTTTCTGGTCTGTAACTGACGCTGATGTGCGAAAGCGTGGGGATCAAACAG",
                             "GGAATATTGCACAATGGGCGCAAGCCTGATGCAGCGACGCCGCGTGGGGGATGACGGCCTTCGGGTTGTAAACTCCTTTCGCCAGGGACGAAGCGTTTTGTGACGGTACCTGGAGAAGAAGCACCGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGGTGCAAGCGTTGTCCGGAATTACTGGGCGTAAAGAGCTCGTAGGTGGTTTGTCACGTCGTCTGTGAAATTCCACAGCTTAACTGTGGGCGTGCAGGCGATACGGGCTGACTTGAGTACTGTAGGGGTAACTGGAATTCCTGGTGTAGCGGTGAAATGCGCAGATATCAGGAGGAACACCGATGGCGAAGGCAGGTTACTGGGCAGTTACTGACGCTGAGGAGCGAAAGCATGGGTAGCAAACAG",
                             "GGAATATTGCACAATGGGCGCAAGCCTGATGCAGCGACGCCGCGTGGGGGATGACGGCCTTCGGGTTGTAAACTCCTTTCGCCAGGGACGAAGCGTTTTGTGACGGTACCTGGAGAAGAAGCACCGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGGTGCAAGCGTTGTCCGGAATTACTGGGCGTAAAGAGCTCGTAGGTGGTTTGTCACGTCGTCTGTGAAATTCCACAGCTTAACTGTGGGCGTGCAGGCGATACGGGCTGACTTGAGTACTGTAGGGGTAACTGGAATTCCTGGTGTAGCGGTGAAATGCGCAGATATCAGGAGGAACACCGATGGCGAAGGCAGGTTACTGGGCAGTTACTGACGCTGAGGAGCGAAAGCATGGGTAGCAAACAG")
+
+core_SVs_sig_diff_on_wilcox_test <- c("GGAATATTGGACAATGGGCGAAAGCCTGATCCAGCCATGCCGCGTGTGTGAAGAAGGCCTTTTGGTTGTAAAGCACTTTAAGTGGGGAGGAAAAGCTTATGGTTAATACCCATAAGCCCTGACGTTACCCACAGAATAAGCACCGGCTAACTCTGTGCCAGCAGCCGCGGTAATACAGAGGGTGCAAGCGTTAATCGGAATTACTGGGCGTAAAGCGCGCGTAGGTGGTTATTTAAGTCAGATGTGAAAGCCCCGGGCTTAACCTGGGAACTGCATCTGATACTGGATAACTAGAGTAGGTGAGAGGGGAGTAGAATTCCAGGTGTAGCGGTGAAATGCGTAGAGATCTGGAGGAATACCGATGGCGAAGGCAGCTCCCTGGCATCATACTGACACTGAGGTGCGAAAGCGTGGGTAGCAAACAG",
+                                      "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTAGGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG",
+                                      "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG",
+                                      "GGAATCTTCCGCAATGGGCGAAAGCCTGACGGAGCAACGCCGCGTGAGTGATGAAGGTCTTCGGATCGTAAAACTCTGTTATTAGGGAAGAACAAATGTGTAAGTAACTATGCACGTCTTGACGGTACCTAATCAGAAAGCCACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTGGCAAGCGTTATCCGGAATTATTGGGCGTAAAGCGCGCGTAGGCGGTTTTTTAAGTCTGATGTGAAAGCCCACGGCTCAACCGTGGAGGGTCATTGGAAACTGGAAAACTTGAGTGCAGAAGAGGAAAGTGGAATTCCATGTGTAGCGGTGAAATGCGCAGAGATATGGAGGAACACCAGTGGCGAAGGCGACTTTCTGGTCTGTAACTGACGCTGATGTGCGAAAGCGTGGGGATCAAACAG")
+
 dat$signif <- NA
 for (i in 1:nrow(dat)) {
   if (dat$SV[i] %in% SVs_sig_diff_on_t_test) {
     dat$signif[i] <- 1
+  }
+}
+dat$wilcox <- NA
+for (i in 1:nrow(dat)) {
+  if (dat$SV[i] %in% core_SVs_sig_diff_on_wilcox_test) {
+    dat$wilcox[i] <- 1.5
   }
 }
           
@@ -1075,6 +1087,12 @@ for (i in 1:nrow(dat)) {
   }
 }
 
+for (i in 1:nrow(dat)) {
+  if (!is.na(dat$wilcox[i])) {
+    dat$wilcox[i] <- 3
+  }
+}
+
 dat %>% ggplot() +
   geom_boxplot(aes(x = SV, # reorder(SV, Abundance, decreasing = TRUE),
                    y = Abundance, 
@@ -1107,6 +1125,44 @@ dat %>% ggplot() +
   ggtitle("Core SVs: >1/10,000 Frequency and >0.35 Prevalence", subtitle = "Defined Using core Function of Microbiome Package")
 ggsave("core_SVs_log_y_scale.png")
 
+dat %>% ggplot() +
+  geom_boxplot(aes(x = SV, # reorder(SV, Abundance, decreasing = TRUE),
+                   y = Abundance, 
+                   # fill = Genus,
+                   color = Genus),
+               # labels = Genus,
+               outlier.shape = NA) +
+  geom_point(aes(x = SV,
+                 y = Abundance, 
+                 color = Genus),
+             size = 1,
+             position = position_jitter(width = 0.2),
+             show.legend = FALSE) +
+  # geom_point(
+  #   aes(x = SV, y = signif),
+  #   shape = "*", 
+  #   size = 8,
+  #   color = "red",
+  #   show.legend = FALSE) +
+  geom_point(
+    aes(x = SV, y = wilcox),
+    shape = "*", 
+    size = 6,
+    color = "red",
+    show.legend = FALSE) +
+  scale_y_continuous(trans = "log10", "Abundance, log10 scale", sec.axis = sec_axis(~ . , name = "Treatement Group")) +
+  xlab("SV; Grouped by Phylum") +
+  # scale_color_paletteer_d("lisa::OskarSchlemmer") +
+  facet_grid(rows = vars(Group), cols = vars(Phylum), space = "free", scales = "free") +
+  theme_bw() + # this puts the facet names in nice boxes
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "gray84", color = "black")
+        # panel.border = element_rect(color = "black", fill = NA, size = 1)
+  )  +
+  ggtitle("Core SVs: >1/10,000 Frequency and >0.35 Prevalence")
+ggsave("core_SVs_log_y_wilcox.png")
+
 ### Simple t-tests -----------
 
 sig_SVs <- readRDS("t_test_sig_SVs.rds")
@@ -1119,17 +1175,17 @@ for (i in 1:nrow(sig_SVs_adj)) {
 }
 
 
-sig_SVs %>% subset(mean_abundance > 0.001) %>% ggplot() +
-  geom_boxplot(aes(x = SV, y = Abundance, color = Genus), outlier.shape = NA) +
-  geom_point(aes(x = SV, y = Abundance, color = Genus), alpha = 0.8, size = 1, position = position_jitter(width = 0.1)) +
-  # facet_grid(cols = vars(Phylum), rows = vars(Group), scales = "free", space = "free") +
-  facet_grid(rows = vars(Group)) +
-  theme(axis.text.x = element_blank(),
-        legend.position = "bottom",
-        panel.border = element_rect(color = "black", fill = NA, size = 1),
-        panel.background = element_rect(color = "gray")) +
-  ggtitle("SVs with p<0.05 Abundance Differences and Mean Abundance > 0.001")
-ggsave("t-test_top_SVs.png")
+  # sig_SVs %>% subset(mean_abundance > 0.001) %>% ggplot() +
+  #   geom_boxplot(aes(x = SV, y = Abundance, color = Genus), outlier.shape = NA) +
+  #   geom_point(aes(x = SV, y = Abundance, color = Genus), alpha = 0.8, size = 1, position = position_jitter(width = 0.1)) +
+  #   # facet_grid(cols = vars(Phylum), rows = vars(Group), scales = "free", space = "free") +
+  #   facet_grid(rows = vars(Group)) +
+  #   theme(axis.text.x = element_blank(),
+  #         legend.position = "bottom",
+  #         panel.border = element_rect(color = "black", fill = NA, size = 1),
+  #         panel.background = element_rect(color = "gray")) +
+  #   ggtitle("SVs with p<0.05 Abundance Differences and Mean Abundance > 0.001")
+  # ggsave("t-test_top_SVs.png")
 
 sig_SVs_adj$special <- NA
 for (i in 1:nrow(sig_SVs_adj)) {
@@ -1142,6 +1198,7 @@ for (i in 1:nrow(sig_SVs_adj)) {
   if (!is.na(sig_SVs_adj$special[i])) {
     sig_SVs_adj$special[i] <- 1.1}
 }
+# Solo plot:
 
 sig_SVs_adj %>% ggplot() +
   geom_boxplot(aes(x = SV, # reorder(SV, Abundance, decreasing = TRUE),
@@ -1175,6 +1232,38 @@ sig_SVs_adj %>% ggplot() +
         )  +
   ggtitle("SVs with Significant Difference by t-test")
 ggsave("facets_t-test_signif_SVs.png")
+
+# to be combined with the wilcox-significant plot
+t_sig_svs_plot <- sig_SVs_adj %>% ggplot() +
+  geom_boxplot(aes(x = SV, # reorder(SV, Abundance, decreasing = TRUE),
+                   y = Abundance, 
+                   # fill = Genus,
+                   color = Genus),
+               # labels = Genus,
+               outlier.shape = NA) +
+  geom_point(aes(x = SV,
+                 y = Abundance, 
+                 color = Genus),
+             size = 1,
+             position = position_jitter(width = 0.2),
+             show.legend = FALSE) +
+  geom_point(
+    aes(x = SV, 
+        y = special),
+    shape = "+", 
+    size = 6,
+    color = "red",
+    show.legend = FALSE) +
+  scale_y_continuous(trans = "log10", "Abundance, log10 scale") +
+  xlab("SV; Grouped by Phylum") +
+  # scale_color_paletteer_d("lisa::OskarSchlemmer") +
+  facet_grid(rows = vars(Group), cols = vars(Phylum), space = "free", scales = "free") +
+  theme_bw() + # this puts the facet names in nice boxes
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "gray84", color = "black")
+        # panel.border = element_rect(color = "black", fill = NA, size = 1)
+  )
 
 ### Wilcoxon tests --------
 
@@ -1233,8 +1322,42 @@ sig_SVs_adj %>% ggplot() +
   ggtitle("SVs with Significant Difference by Wilcoxon Test")
 ggsave("facets_wilcox_signif_SVs.png")
 
+wilcox_sig_svs_plot <- sig_SVs_adj %>% ggplot() +
+  geom_boxplot(aes(x = SV, # reorder(SV, Abundance, decreasing = TRUE),
+                   y = Abundance, 
+                   # fill = Genus,
+                   color = Genus),
+               # labels = Genus,
+               outlier.shape = NA) +
+  geom_point(aes(x = SV,
+                 y = Abundance, 
+                 color = Genus),
+             size = 1,
+             position = position_jitter(width = 0.2),
+             show.legend = FALSE) +
+  geom_point(
+    aes(x = SV, 
+        y = special),
+    shape = "+", 
+    size = 6,
+    color = "red",
+    show.legend = FALSE) +
+  scale_y_continuous(trans = "log10", "Abundance, log10 scale") +
+  xlab("SV; Grouped by Phylum") +
+  # scale_color_paletteer_d("lisa::OskarSchlemmer") +
+  facet_grid(rows = vars(Group), cols = vars(Phylum), space = "free", scales = "free") +
+  theme_bw() + # this puts the facet names in nice boxes
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "gray84", color = "black")
+        # panel.border = element_rect(color = "black", fill = NA, size = 1)
+  ) 
 
-
+ggarrange(plotlist = list(t_sig_svs_plot, wilcox_sig_svs_plot),
+          labels = c("t-test", "Wilcox test"),
+          ncol = 1)
+# re-think; this makes it confusing whether they are the same SVs or not
+# and the colors are different for some of the same genuses
 
 
 ### Venn diagrams -----
@@ -1291,7 +1414,7 @@ strep_abun_df %>%
 sigtab <- readRDS("sigtab.rds")
 ggplot(sigtab, aes(y = Genus, x = log2FoldChange, color = Phylum)) + #play with aesthetics to make graph informative
   geom_vline(xintercept = 0.0, color = "gray", linewidth = 0.5) +
-  geom_point(aes(size = baseMean), position = position_jitter(width = 0.1)) + #scale size by mean relative abundance
+  geom_point(aes(size = baseMean), position = position_jitter()) + #scale size by mean relative abundance
   scale_size_continuous(range = c(3, 8)) +
   theme(axis.text.x = element_text(hjust = 0, vjust = 0.5, size = 10), 
         axis.text.y = element_text(size = 11),
@@ -1304,6 +1427,32 @@ ggplot(sigtab, aes(y = Genus, x = log2FoldChange, color = Phylum)) + #play with 
        subtitle = "Antibiotic-treated Compared to Control Group")
   # theme_minimal()
 ggsave("deseq_fc_analysis.png")
+
+## RF -------
+rf_model <- readRDS("rf_model.rds")
+
+# set color palette  
+col.bro <- (rainbow(6))
+# add white to that color list
+col.bro <- append(col.bro, "#ffffff", after = 6)
+
+
+# adjusted plot for factorial data, recommend using sample ID as 'factor A' (x value)
+ggplot(rf_model, aes(as.factor(Sample), reorder(variable, rescale, mean))) + 
+  theme_minimal() + 
+  facet_grid(.~Group, space = "free", scales = "free") + #set up graph facets to separate out levels of FactorA
+  geom_tile(aes(fill = rescale), color = "gray") + #add the heatmap coloring 
+  scale_fill_gradientn(colors = rev(col.bro), na.value = 'white') + #use the preset color palette
+  labs(fill = "Log abundance") + #rename legend heading
+  theme(legend.position = 'bottom',
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_line(size = 2),
+        axis.text.y = element_text(size = 6),
+        panel.background = element_rect(fill = "gray84", color = "black")) +
+  ylab('Predictor Taxa') +
+  xlab('Sample') +
+  ggtitle("Random Forest")
+ggsave("rf_heatmap.png")
 
 ## Beta ordination ------
 ### PCOA -----

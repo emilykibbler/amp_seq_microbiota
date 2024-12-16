@@ -940,6 +940,17 @@ t.test(atb_phylo.coreW_35@otu_table[,aligns_to_AY_in_paper], no_atb_phylo.coreW_
 aligns_to_HG_in_paper <- "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG"
 t.test(atb_phylo.coreW_35@otu_table[,aligns_to_HG_in_paper], no_atb_phylo.coreW_35@otu_table[,aligns_to_HG_in_paper])
 
+for (i in 1:ncol(phylo.coreW_35@otu_table)) {
+  print(colnames(atb_phylo.coreW_35@otu_table)[i])
+  print(wilcox.test(atb_phylo.coreW_35@otu_table[,i], no_atb_phylo.coreW_35@otu_table[,i]))
+}
+
+core_SVs_sig_diff_on_wilcox_test <- c("GGAATATTGGACAATGGGCGAAAGCCTGATCCAGCCATGCCGCGTGTGTGAAGAAGGCCTTTTGGTTGTAAAGCACTTTAAGTGGGGAGGAAAAGCTTATGGTTAATACCCATAAGCCCTGACGTTACCCACAGAATAAGCACCGGCTAACTCTGTGCCAGCAGCCGCGGTAATACAGAGGGTGCAAGCGTTAATCGGAATTACTGGGCGTAAAGCGCGCGTAGGTGGTTATTTAAGTCAGATGTGAAAGCCCCGGGCTTAACCTGGGAACTGCATCTGATACTGGATAACTAGAGTAGGTGAGAGGGGAGTAGAATTCCAGGTGTAGCGGTGAAATGCGTAGAGATCTGGAGGAATACCGATGGCGAAGGCAGCTCCCTGGCATCATACTGACACTGAGGTGCGAAAGCGTGGGTAGCAAACAG",
+                                      "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTAGGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG",
+                                      "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG",
+                                      "GGAATCTTCCGCAATGGGCGAAAGCCTGACGGAGCAACGCCGCGTGAGTGATGAAGGTCTTCGGATCGTAAAACTCTGTTATTAGGGAAGAACAAATGTGTAAGTAACTATGCACGTCTTGACGGTACCTAATCAGAAAGCCACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTGGCAAGCGTTATCCGGAATTATTGGGCGTAAAGCGCGCGTAGGCGGTTTTTTAAGTCTGATGTGAAAGCCCACGGCTCAACCGTGGAGGGTCATTGGAAACTGGAAAACTTGAGTGCAGAAGAGGAAAGTGGAATTCCATGTGTAGCGGTGAAATGCGCAGAGATATGGAGGAACACCAGTGGCGAAGGCGACTTTCTGGTCTGTAACTGACGCTGATGTGCGAAAGCGTGGGGATCAAACAG")
+ggVennDiagram(list(core_SVs_sig_diff_on_t_test, core_SVs_sig_diff_on_wilcox_test))
+
 ### Simple method: t-tests ------------
 
 # this is the one with SVs as colnames, sample as row names, and read numbers as values
@@ -998,6 +1009,7 @@ dim(sig_SVs)
       # view(sig_SVs)
 
 t_test_sig_SVs <- SV_abundance_df_creator(sig_SVs, phylo_decontam_rar) # in lab9_functions.R
+saveRDS(t_test_sig_SVs, "t_test_sig_SVs.rds")
 
 ASV3 <- "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG"
 ASV3 %in% unique(t_test_sig_SVs$SV)
@@ -1132,7 +1144,9 @@ res = suppressMessages(results(diagdds))
 res = res[order(res$padj, na.last = NA), ]
 alpha = 0.01
 sigtab = res[(res$padj < alpha), ]
-sigtab = cbind(as(sigtab, "data.frame"), as(tax_table(phylo_decontam_with_species_exp_samples)[rownames(sigtab), ], "matrix")) #CHANGE ME if you didn't subset your data
+sigtab = cbind(as(sigtab, "data.frame"), 
+               as(tax_table(phylo_decontam_with_species_exp_samples)[rownames(sigtab), ], 
+                  "matrix")) #CHANGE ME if you didn't subset your data
 
 # head(sigtab)
 
@@ -1189,18 +1203,18 @@ ggVennDiagram(list(DEseq_sig_SV_sequences, my_t_test_sig_SV_sequences, wilcox_te
 
 
 
-## Feature Prediction (Differential Abundance) with Random Forest ---------------------------------
+## Random Forest Feature Prediction (Differential Abundance)  ---------------------------------
 #  https://rpubs.com/michberr/randomforestmicrobe
 # https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm
 # https://www.rdocumentation.org/packages/randomForest/versions/4.6-12/topics/randomForest
 
 
 # Make a dataframe of training data with OTUs as column and samples as rows, which is the phyloseq OTU table
-
+phylo_decontam_with_species_exp_samples <- readRDS("phylo_decontam_with_species_exp_samples.rds")
 predictors <- otu_table(phylo_decontam_with_species_exp_samples, taxa_are_rows = FALSE)
 
 dim(predictors)
-# 76 samples, 1884 SVs
+# 76 samples, 1801 SVs
 
 # output phyloseq tax table as a dataframe to make it manipulable
 tax.df <- data.frame(tax_table(phylo_decontam_with_species_exp_samples), stringsAsFactors = FALSE)
@@ -1239,12 +1253,30 @@ response.pf <- rfPermute(response ~. , data = rf.data, na.action = na.omit, ntre
 # response.pf <- rfPermute(as.numeric(response) ~. , data = rf.data, na.action = na.omit, ntree= 500, nrep = 100)
 
 print(response.pf)
+
 # paste the print out here, especially the OOB error. 1-(Out-of-the-box error) = accuracy of your model
-# Antibiotics No antibiotics pct.correct LCI_0.95 UCI_0.95
+#                     Antibiotics No antibiotics pct.correct LCI_0.95 UCI_0.95
 # Antibiotics             52              2        96.3     87.3     99.5
 # No antibiotics          16              6        27.3     10.7     50.2
 # Overall                 NA             NA        76.3     65.2     85.3
+# 
+# 
+# Type of random forest: classification 
+# Number of trees: 500 
+# No. of variables tried at each split: 42 
+# No. of permutation replicates: 100 
+# Start time: 2024-12-10 10:50:16 
+# End time: 2024-12-10 10:51:45 
+# Run time: 1.47 mins 
+# 
+#                       No_antibiotics Antibiotics pct.correct LCI_0.95 UCI_0.95
+# No_antibiotics              9          13        40.9         20.7     63.6
+# Antibiotics                 3          51        94.4         84.6     98.8
+# Overall                    NA          NA        78.9         68.1     87.5
+
+
 saveRDS(response.pf, "response_pf.rds")
+response.pf <- readRDS("response_pf.rds")
 
 # grab which features were labeled "important"
 imp <- importance(response.pf, scale = TRUE)
@@ -1256,22 +1288,21 @@ imp.df <- data.frame(predictors = rownames(imp), imp)
 # For factorial data, grab only those features with p-value < 0.05
 imp.sig <- subset(imp.df, MeanDecreaseAccuracy.pval <= 0.05) 
 print(dim(imp.sig))
-# 24 x 9
-
+# 22 x 9
 
 # or For factorial data, sort by importance amount
 imp.sort <- imp.sig[order(imp.sig$MeanDecreaseAccuracy),]
-
-
 
 #create levels to the factor based on SV table
 imp.sort$predictors <- factor(imp.sort$predictors, levels = imp.sort$predictors)
 
 # Select the top so many predictors (more than 50 is a crowded graph)
-imp.top <- imp.sort[1:50, ]
+# I have less than 50
+# imp.top <- imp.sort[1:50, ]
 
 # figure out what they are and name them, otherwise will just be named the full SV
 otunames <- imp.top$predictors
+# otunames <- otunames[!is.na(otunames)]
 
 
 # need to grab the abundance data out of the otu_table and make a new data.frame, and add the taxa names back in
@@ -1287,13 +1318,6 @@ pred.abun.df <- data.frame(pred.abun, stringsAsFactors = FALSE)
 # use the row.names (sample names) from the phyloseq object to name the samples in your forest
 row.names(pred.abun.df) <- row.names(sample_data(phylo_decontam_with_species_exp_samples))
 
-
-# set color palette  
-col.bro <- (rainbow(6))
-
-# add white to that color list
-col.bro <- append(col.bro, "#ffffff", after = 6)
-
 # add some factors that you can use to make your graph pretty, as many as you want
 pred.abun.df$Sample <- row.names(sample_data(phylo_decontam_with_species_exp_samples)) #always grab the sample names
 pred.abun.df$Group <- sample_data(phylo_decontam_with_species_exp_samples)$Group 
@@ -1303,7 +1327,6 @@ pred.abun.df$Group <- sample_data(phylo_decontam_with_species_exp_samples)$Group
 # optional, if you want factors to graph in a specific order, you can set that manually, and relabel them so they are more readable in the graph
 # pred.abun.df$Date <- factor(pred.abun.df$Date, levels=c("21_Apr", "12_May", "01_Jun", "22_Jun", "25_Jul"), labels=c("21 Apr", "12 May", "01 Jun", "22 Jun", "25 Jul")) #CHANGE ME
 
-## Troubleshooting ------
 
 # reload these packages in this order, because sometimes the ddply function breaks
 library(plyr)
@@ -1314,31 +1337,23 @@ m <- melt(pred.abun.df, id.vars = c("Sample", "Group"))
 # m$variable <- str_remove_all(m$variable, ".NA")
 # m$variable <- str_replace_all(m$variable, ".NA.", "_") # come back and clean up names later
 head(m)
-saveRDS(m, "m.rds")
-# FIXME
+
+
 esk_m <- m
 esk_m$rescale <- log(1 + as.numeric(m$value))
 head(esk_m)
+
+# I still don't understand why you would use this line of code instead of my simple esk_m$rescale line
 m <- ddply(m, .(variable), mutate, rescale = log(1 + as.numeric(value))) #NOTE: may need to change it to as.numeric(value) if it tells you an error about non-binary operators. if you go to graph it and it doesn't recognize 'rescale', it means this piece failed.
 # Note to self: ddply and transform is kind of like pivot_longer in the tidyverse
 head(m)
 identical(esk_m, m)
+# I guess it turns out the same though
+rf_model <- m
+rf_model$variable <- str_replace_all(rf_model$variable, "NA", "SV")
+saveRDS(rf_model, "rf_model.rds")
 
-
-# adjusted plot for factorial data, recommend using sample ID as 'factor A' (x value)
-ggplot(esk_m, aes(as.factor(Sample), variable)) + 
-  theme_minimal() + 
-  facet_grid(.~Group, space = "free", scales = "free") + #set up graph facets to separate out levels of FactorA
-  geom_tile(aes(fill = esk_rescale), color = "gray") + #add the heatmap coloring 
-  scale_fill_gradientn(colors = rev(col.bro), na.value = 'white') + #use the preset color palette
-  labs(fill = "Log abundance") + #rename legend heading
-  theme(legend.position = 'bottom',
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_line(size = 2),
-        axis.text.y = element_text(size = 6)) +
-  ylab('Predictor Taxa') +
-  xlab('Sample') 
-
+# go to plotting script
 
 
 ## LEFSe ---------------------------------
@@ -1721,9 +1736,10 @@ cca_plot <- plot_ordination(
   axes = c(1,2)) + 
   theme_minimal() +
   geom_point(aes(colour = Group), size = 4) +
-  geom_point(colour = "grey90", size = 1.5) 
+  geom_point(colour = "grey90", size = 1.5) +
+  ggtitle("CCA plot; Bray-Curtis")
 cca_plot
-
+ggsave("cca_plot.png")
 
 # above looks kinda crazy...
 # below -- I don't have CCA2, where is it supposed to come from?
