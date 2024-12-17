@@ -131,7 +131,7 @@ ggplot(plotData, aes(x = Sample_type, y = as.numeric(totals))) +
   geom_jitter(aes(color = Sample_type), width = 0.1) + 
   facet_grid(cols = vars(type)) +
   scale_color_hue(name = "Sample type") +
-  ylab("Sequences") + 
+  ylab("Reads") + 
   xlab("QA stage") +
   theme(axis.text.x = element_text(angle = 0, size = 10),
         axis.title.x = element_text(size = 14),
@@ -141,8 +141,9 @@ ggplot(plotData, aes(x = Sample_type, y = as.numeric(totals))) +
         legend.text = element_text(size = 12),
         panel.background = element_rect(fill = "gray85"),
         plot.title = element_text(size = 16, face = "bold")) +
+  scale_y_continuous(trans = "log") +
   ggtitle("Reads by filtering step")
-ggsave("reads_sample_type_QC_status.png")
+ggsave("logscale_reads_sample_type_QC_status.png")
 
 
 
@@ -1320,6 +1321,7 @@ sig_SVs_adj %>% ggplot() +
   theme_bw() + # this puts the facet names in nice boxes
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
+        legend.text = element_text(face = "italic"),
         panel.background = element_rect(fill = "gray84", color = "black")
         # panel.border = element_rect(color = "black", fill = NA, size = 1)
   )  +

@@ -964,6 +964,10 @@ ggVennDiagram(list(core_SVs_sig_diff_on_t_test, core_SVs_sig_diff_on_wilcox_test
 
 ### Simple method: t-tests ------------
 
+# I did not use any of this analysis in the paper.
+# I replaced t-tests with wilcox when I realized t-tests are for normal/parametric data,
+# and wilcox is for not normal/non-parametric data, which is my data
+
 # this is the one with SVs as colnames, sample as row names, and read numbers as values
 view(phylo_decontam_rar@otu_table)
 # this is the one with SVs as row names, classifications as colnames, class names as values
@@ -1035,21 +1039,36 @@ saveRDS(t_test_sig_SVs, "t_test_sig_SVs.rds")
 wilcox_sig_SVs <- data.frame(matrix(nrow = 0, ncol = 2))
 colnames(wilcox_sig_SVs) <- c("SV", "p-value")
 
+# testing of individual lines I sometimes do before writing a for-loop
+  # unlist(t.test(phylo_decontam_rar_atb_otu[,1], phylo_decontam_rar_no_atb_otu[,1]))
+  # wilcox.test(phylo_decontam_rar_atb_otu[,1], phylo_decontam_rar_no_atb_otu[,1])
+  # unlist(wilcox.test(phylo_decontam_rar_atb_otu[,1], phylo_decontam_rar_no_atb_otu[,1]))
+  # unlist(wilcox.test(phylo_decontam_rar_atb_otu[,1], phylo_decontam_rar_no_atb_otu[,1]))[2]
+  # mean(c(phylo_decontam_rar_atb_otu[,1], phylo_decontam_rar_no_atb_otu[,1]))
 
-# unlist(t.test(phylo_decontam_rar_atb_otu[,1], phylo_decontam_rar_no_atb_otu[,1]))
-# wilcox.test(phylo_decontam_rar_atb_otu[,1], phylo_decontam_rar_no_atb_otu[,1])
-# unlist(wilcox.test(phylo_decontam_rar_atb_otu[,1], phylo_decontam_rar_no_atb_otu[,1]))
-# unlist(wilcox.test(phylo_decontam_rar_atb_otu[,1], phylo_decontam_rar_no_atb_otu[,1]))[2]
+wilcox_sig_SV_means <- data.frame(matrix(nrow = 0, ncol = 4))
+colnames(wilcox_sig_SV_means) <- c("SV", "mean_with", "mean_without", "mean_all")
 
 for (i in 1:ncol(phylo_decontam_rar_atb_otu)) {
   if (unlist(wilcox.test(phylo_decontam_rar_atb_otu[,i], phylo_decontam_rar_no_atb_otu[,i]))[2] < 0.05) {
-    wilcox_sig_SVs[nrow(wilcox_sig_SVs) + 1, ] <- c(colnames(phylo_decontam_rar_atb_otu)[i], 
-                                                    unlist(wilcox.test(phylo_decontam_rar_atb_otu[,i], 
-                                                                       phylo_decontam_rar_no_atb_otu[,i]))[2])
+    wilcox_sig_SV_means[nrow(wilcox_sig_SV_means) + 1, ] <- c(colnames(phylo_decontam_rar_atb_otu)[i],
+      mean(phylo_decontam_rar_atb_otu[,i]),
+      mean(phylo_decontam_rar_no_atb_otu[,i]), 
+      mean(c(phylo_decontam_rar_atb_otu[,i], phylo_decontam_rar_no_atb_otu[,i])))
+    if(mean(c(phylo_decontam_rar_atb_otu[,i], phylo_decontam_rar_no_atb_otu[,i])) > 5) {
+    # print(wilcox.test(phylo_decontam_rar_atb_otu[,i], phylo_decontam_rar_no_atb_otu[,i]))
+      wilcox_sig_SVs[nrow(wilcox_sig_SVs) + 1, ] <- c(colnames(phylo_decontam_rar_atb_otu)[i], 
+                                                      unlist(wilcox.test(phylo_decontam_rar_atb_otu[,i], 
+                                                                         phylo_decontam_rar_no_atb_otu[,i]))[2])
+    }  
   }
 }
+wilcox_sig_SV_means$diff <- as.numeric(wilcox_sig_SV_means$mean_with) - as.numeric(wilcox_sig_SV_means$mean_without)
+# view(wilcox_sig_SV_means)
 
 wilcox_sig_SVs <- SV_abundance_df_creator(wilcox_sig_SVs, phylo_decontam_rar)
+view(wilcox_sig_SVs)
+
 saveRDS(wilcox_sig_SVs, "wilcox_sig_SVs.rds")
 
 wilcox_test_sig_SV_sequences <- unique(wilcox_sig_SVs$SV)
