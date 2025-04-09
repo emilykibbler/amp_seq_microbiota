@@ -630,18 +630,13 @@ ggplot(phylo_rar_rich_df, aes(x = Group, y = Observed)) +
   # theme(text = element_text(size = 20)) # increases font size
   ggtitle("Bacterial richness")
 
-### skipped, maybe come back later --------
 
-# these plots are not as informative for my data since it's really just the one variable that matters
+df <- estimate_richness(phylo_decontam_rar, measures = "Chao1")
+df$SampleID <- phylo_decontam_rar@sam_data$SampleID
+df <- full_join(df, as.data.frame(phylo_decontam_rar@sam_data), by = "SampleID")
 
-# # make that same graph but drop any samples that lack data for that FactorA (replace FactorA in the code with your factor name).
-# ggplot(data=subset(EX_ps_clean.rar.rich.df, !is.na(FactorA)), aes(x=Temperature, y=Observed)) + 
-#   theme_minimal() + 
-#   geom_point(aes(color=Group), size = 3) + # sets colors by group and a set point size 
-#   xlab("Temperature of Ocean Water (C)") + 
-#   ylab("Bacterial Richness (SVs)") + 
-#   theme(text = element_text(size = 20)) # increases font size
-
+uJ <- vegdist(wisconsin(sqrt(vegan_otu_table)), method = "jaccard", binary = TRUE) #CHANGE ME to be the method and weighted (binary = false) or unweighted version (binary = true)
+# adonis2(formula = EX_uJ ~ Group, data = as(sample_data(phylo_decontam_rar), "data.frame"), permutations = 9999, na.action = na.omit, by = "terms")
 
 
 # Make an alpha diversity table: https://www.geeksforgeeks.org/create-table-from-dataframe-in-r/
@@ -743,7 +738,7 @@ conover.test(phylo_decontam_rar_rich_df$Observed, phylo_decontam_rar_rich_df$Gro
 # you might run each factor separately to find out if they are significant on their own. 
 
 numeric_columns <- c("Age", "Birth_weight", "Gestational_age", "House_surface", "Breastfeeding_time", "Pneumococcal_load", "Fever_time_before_sampling", "C_reactive_protein" , "Hemoglobin", "Leukocytes", "Hospitalization_days" )
-phylo_decontam_rar_rich_df <- phylo_decontam_rar_rich_df
+
 phylo_decontam_rar_rich_df[,numeric_columns] <- sapply(phylo_decontam_rar_rich_df[numeric_columns],as.numeric)
 sapply(phylo_decontam_rar_rich_df, class)
 numeric_columns <- colnames(phylo_decontam_rar_rich_df)[which(as.data.frame(sapply(phylo_decontam_rar_rich_df, class))[,1] == "numeric")]
@@ -761,9 +756,11 @@ summary(lm(Observed ~ ., data = df_no_ab[, numeric_columns]))
 # If you have more complicated experimental designs, you might need lmer or glmer models to accommodate that
 # does not have a normal distribution, so compare means using glmer and poisson distribution (number of events within a time interval): https://towardsdatascience.com/the-poisson-distribution-and-poisson-process-explained-4e2cb17d459
 
-# lm <- (glmer(Observed ~ A + C + (1|Year_collected), family=poisson, data=EX_ps_clean.rar.rich.df))
-# 
-# summary(lm)
+# lm <- (glmer(Chao1 ~ Group + Syndrome, 
+#              # family = poisson, 
+#              data = phylo_decontam_rar_rich_df))
+
+summary(lm)
 # paste the output here
 
 
@@ -1512,8 +1509,8 @@ plot_ordination(phylo_decontam_rar, uJ_nmds, type = "samples", color = "Group")
 
 ### Troubleshooting adonis -------
 # Example basic permanova test using Adonis in vegan
-  #FIXME
-  # Other people in class are having the same error
+
+  # This doesn't work, keep scrolling down
 adonis2(uJ_nmds ~ Group, as(sample_data(phylo_decontam_rar), "data.frame"), permutations = 9999, na.action = na.omit, by = "terms") #CHANGE ME so variable and factor reflect your data
 # paste output here
 
@@ -1585,6 +1582,26 @@ adonis2(uJ ~ Group,
 # ---
 #   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
+uJ <- vegdist(wisconsin(sqrt(vegan_otu_table)), method = "bray", binary = TRUE) #CHANGE ME to be the method and weighted (binary = false) or unweighted version (binary = true)
+
+adonis2(uJ ~ Group, 
+        sampledf, 
+        permutations = 9999, 
+        na.action = na.omit,
+        by = "terms")
+
+# Permutation test for adonis under reduced model
+# Terms added sequentially (first to last)
+# Permutation: free
+# Number of permutations: 9999
+# 
+# adonis2(formula = uJ ~ Group, data = sampledf, permutations = 9999, by = "terms", na.action = na.omit)
+#         Df  SumOfSqs      R2      F Pr(>F)    
+# Group     1   1.2284 0.04348 3.3183  1e-04 ***
+# Residual 73  27.0240 0.95652                  
+# Total    74  28.2525 1.00000                  
+# ---
+#   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 # from class chat
 # adonis2(dune ~ Management*A1, data = dune.env, by = "terms")
@@ -1670,7 +1687,7 @@ TukeyHSD(betadisp)
 bray_not_na <- phyloseq::distance(physeq = phylo_decontam_rar, method = "bray") #CHANGE ME
 
 cca_ord <- ordinate(
-  physeq = phylo_decontam_rar, #CHANGE ME
+  physeq = phylo_decontam_rar,
   method = "CCA",
   distance = bray_not_na,
   formula = ~ Group +  # If you want to see interaction between variables (like Group and Syndrome), change this + to a *
@@ -1704,11 +1721,11 @@ cca_ord
 
 
 # NOTE: do you have CCA eigenvalues for each of the factors you put in? 
-# no...
+# no... syndrome not significant
 # CCA1 = x axis, and CCA2 = y axis, so if you don't have both of those it will use CA which is the unconstrained axis instead.
 
 cca_ord <- ordinate(
-  physeq = phylo_decontam_rar, #CHANGE ME
+  physeq = phylo_decontam_rar,
   method = "CCA",
   distance = bray_not_na,
   formula = ~ Group)

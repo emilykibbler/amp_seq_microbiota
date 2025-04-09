@@ -64,7 +64,7 @@ ggarrange(plotlist = list(p1, p2),
           align = "v")
 ggsave("correlation_patient_metrics.png")
 
-## Plot QC steps ------------------
+## Plot QA steps ------------------
 file_info <- readRDS("file_info.rds")
 # Filtered
 # F
@@ -105,7 +105,7 @@ ggsave("raw_data_qual_plots.png")
 
 
 # Look at read numbers in and out of QC steps
-track <- readRDS('tracked.rds')
+track <- readRDS('track.rds')
 
 plotData <- as.data.frame(track) %>% gather(type, totals, reads.in, filtered, nonchimeras)
 
@@ -132,18 +132,19 @@ ggplot(plotData, aes(x = Sample_type, y = as.numeric(totals))) +
   facet_grid(cols = vars(type)) +
   scale_color_hue(name = "Sample type") +
   ylab("Reads") + 
-  xlab("QA stage") +
+  # xlab("QA stage") +
+  theme_bw() +
   theme(axis.text.x = element_text(angle = 0, size = 10),
-        axis.title.x = element_text(size = 14),
+        axis.title.x = element_blank(),
         panel.border = element_rect(color = "gray", fill = NA, size = 1),
         legend.position = "top",
         legend.title = element_text(size = 14),
         legend.text = element_text(size = 12),
         panel.background = element_rect(fill = "gray85"),
         plot.title = element_text(size = 16, face = "bold")) +
-  scale_y_continuous(trans = "log") +
+  # scale_y_continuous(trans = "log") +
   ggtitle("Reads by filtering step")
-ggsave("logscale_reads_sample_type_QC_status.png")
+ggsave("reads_sample_type_QC_status.png")
 
 
 
@@ -241,6 +242,7 @@ plot_ordination(phylo, phylo_ord, type = "samples", color = "Group") +
 ggsave("bray_ordination_before_plot.png") 
 
 ## Clean ordination plot -----
+phylo_decontam_rar <- readRDS("phylo_decontam_rar.rds")
 phylo_ord <- ordinate(phylo_decontam_rar, #calculate similarities
                       method = "PCoA", #ordination type
                       "bray", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted)
@@ -256,6 +258,9 @@ ggsave("bray_ordination_after_clean_plot.png")
 
 ## Richness considering syndrome -------------
 phylo_decontam_rar <- readRDS("phylo_decontam_rar.rds")
+table(phylo_decontam_rar@sam_data$Syndrome)
+
+### Plot_richness, which always gives me trouble -------
 plot_richness(phylo_decontam_rar, 
               x = "Syndrome", 
               measures = c("Observed"), #whatever alpha diversity measure you want
@@ -270,7 +275,6 @@ plot_richness(phylo_decontam_rar,
   facet_grid(.~Group, switch = "x", space = "free", scales = "free") + # facet_grid(.~Week, space = "free") +
   # theme(legend.position = "none") + #use to get rid of your legend
   ylab("Observed Bacterial Richness (SVs)") +
-  # xlab("Week") +
   theme(
     plot.title = element_markdown(),
     plot.subtitle = element_markdown(),
@@ -300,6 +304,31 @@ plot_richness(phylo_rar,
   ) +
   labs(title = "Nasal aspirate alpha diversity",
        subtitle = "Rarefied<br>No species removed")
+
+### my own -----
+df <- estimate_richness(phylo_decontam_rar, measures = "Chao1")
+df$SampleID <- phylo_decontam_rar@sam_data$SampleID
+df <- full_join(df, as.data.frame(phylo_decontam_rar@sam_data), by = "SampleID")
+df$Syndrome <- str_to_sentence(df$Syndrome)
+df$Syndrome <- str_replace_all(df$Syndrome, "_", " ")
+
+df %>% ggplot(aes(x = Syndrome, y = Chao1)) +
+  geom_violin(trim = TRUE, aes(fill = Syndrome)) +
+  geom_boxplot(outlier.shape = NA, width = 0.25) +
+  geom_point(size = 1) +
+  facet_grid(cols = vars(Group), switch = "x", scales = "free", space = "free") +
+  theme(axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        panel.border = element_rect(color = "black", fill = NA),
+        legend.position = "top") +
+  ylab("Chao1 Richness") +
+  ggtitle("Alpha Diversity by Syndrome")
+ggsave("syndrome_chao_richness.png")
+
+atb_c_pneu <- subset(df, Group == "Antibiotics" & Syndrome == "Complicated pneumonia")
+atb_nc_pneu <- subset(df, Group == "Antibiotics" & Syndrome == "Non complicated pneumonia")
+wilcox.test(atb_c_pneu$Chao1, atb_nc_pneu$Chao1)
+
 
 # two different richness plots grouped
 
@@ -507,8 +536,8 @@ phylo_decontam_strep_rar <- readRDS("phylo_decontam_strep_rar.rds")
 
 ## Clean alpha diversity ---------
 
-sample_data(phylo_decontam_rar)$Group <- factor(sample_data(phylo_decontam_rar)$Group, 
-                                                levels = c("No antibiotics", "Antibiotics"))
+# sample_data(phylo_decontam_rar)$Group <- factor(sample_data(phylo_decontam_rar)$Group, 
+#                                                 levels = c("No antibiotics", "Antibiotics"))
 
 plot_richness(phylo_decontam_rar, 
                        x = "Group", #CHANGE ME, A is whatever factor you want on x-axis
@@ -659,10 +688,9 @@ source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab5_functions.R")
 
 phylo <- readRDS("phylo.rds")
 
-
-phylo_atb <- subset_and_trim(phylo, "Group", "IPD_ATB")
-phylo_no_atb <- subset_and_trim(phylo, "Group", "IPD")
-phylo_NC <- subset_and_trim(phylo, "Group", "controlneg")
+phylo_atb <- subset_and_trim(phylo, "Group", "Antibiotics")
+phylo_no_atb <- subset_and_trim(phylo, "Group", "No antibiotics")
+phylo_NC <- subset_and_trim(phylo, "Group", "Lab Negative Control")
 
 dirty_atb_SVs <- colnames(as.data.frame(phylo_atb@otu_table))
 dirty_no_atb_SVs <- colnames(as.data.frame(phylo_no_atb@otu_table))
@@ -696,8 +724,10 @@ decontam_no_atb_SVs <- row.names(as.data.frame(phylo_decontam_rar_no_atb@tax_tab
         ggtitle("SVs -- after decontam and rarification")
       ggsave("venn_diagram_SVS_atb_no_atb.png")
 
+      
+      
+      
 clean_phylo_rarified <- readRDS("clean_phylo_rarified.rds")
-
 
 phylo_clean_rar_atb <- subset_and_trim(clean_phylo_rarified, "Group", "Antibiotics")
 phylo_clean_rar_no_atb <- subset_and_trim(clean_phylo_rarified, "Group", "No antibiotics")
@@ -710,27 +740,27 @@ length(SVs_at_this_point) # 1625
 
 clean_SVs <- c(clean_atb_SVs, clean_no_atb_SVs)
 clean_SVs <- unique(clean_SVs)
-length(phylo_clean_SVs) # 1414
+# length(phylo_clean_SVs) # 1414
 
 decontam_SVs <- c(decontam_no_atb_SVs, decontam_atb_SVs)
 decontam_SVs <- unique(decontam_SVs)
-length(decontam_SVs)
+# length(decontam_SVs)
 
-list(
-  Antibiotics = clean_atb_SVs,
-  No_Antibiotics = clean_no_atb_SVs
-) %>%
-  ggVennDiagram( set_size = 3) +
-    scale_x_continuous(expand = expansion(mult = .2)) +
-    theme(plot.title = element_text(face = "bold", size = 16)) +
-    ggtitle("SVs -- after clean and rarification")
-  ggsave("clean_venn_diagram_SVS_atb_no_atb.png")
+# list(
+#   Antibiotics = clean_atb_SVs,
+#   No_Antibiotics = clean_no_atb_SVs
+# ) %>%
+#   ggVennDiagram( set_size = 3) +
+#     scale_x_continuous(expand = expansion(mult = .2)) +
+#     theme(plot.title = element_text(face = "bold", size = 16)) +
+#     ggtitle("SVs -- after clean and rarification")
+#   # ggsave("clean_venn_diagram_SVS_atb_no_atb.png")
 
 list(
   "Clean, +antibiotics" = clean_atb_SVs,
-  "Decontam, +antibiotics" = atb_SVs,
+  "Decontam, +antibiotics" = decontam_atb_SVs,
   "Clean, -antibiotics" = clean_no_atb_SVs,
-  "Decontam, -antibiotics" = no_atb_SVs
+  "Decontam, -antibiotics" = decontam_no_atb_SVs
 ) %>%
   ggVennDiagram() +
     scale_y_continuous(expand = expansion(mult = .1)) +
@@ -738,7 +768,7 @@ list(
     theme(plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
           legend.position = "bottom") +
     ggplot2::scale_fill_gradient(low = "blue",high = "yellow") +
-    ggtitle("SVs -- After Decontam or Ishaq Clean and Rarification")
+    ggtitle("SVs -- After Decontam/Clean and Rarification")
 ggsave("venn_diagram_clean_decon_SVs.png")
 
 # heat maps
@@ -999,13 +1029,22 @@ amalgamate_SV_data <- function(input_otu_table, group_name){
   return(df)
 }
 
-dat <- data.frame(matrix(nrow = 0, ncol = 3))
-colnames(dat) <- c("SV", "Group", "Abundance")
-dat <- rbind(dat, amalgamate_SV_data(atb_phylo.coreW_35@otu_table, "Antibiotics"))
 
-dat <- rbind(dat, amalgamate_SV_data(no_atb_phylo.coreW_35@otu_table, "No antibiotics"))
-head(dat)
-dim(dat)
+
+atb <- pivot_longer(as.data.frame(atb_phylo.coreW_35@otu_table), 
+                    cols = 1:ncol(as.data.frame(atb_phylo.coreW_35@otu_table)), 
+                    names_to = "SV", 
+                    values_to = "Abundance")
+atb$Group <- "Antibiotics"
+
+
+noatb <- pivot_longer(as.data.frame(no_atb_phylo.coreW_35@otu_table), 
+                      cols = 1:ncol(as.data.frame(no_atb_phylo.coreW_35@otu_table)), 
+                      names_to = "SV", 
+                      values_to = "Abundance")
+noatb$Group <- "No antibiotics"
+
+dat <- rbind(atb, noatb)
 
 temp <- as.data.frame(atb_phylo.coreW_35@tax_table)
 temp$SV <- row.names(temp)
@@ -1085,16 +1124,83 @@ ggarrange(plotlist = list(p1, p2),
                                   size = 19))
 ggsave("top_13_core_SVs_boxplot.png")
 
-# playing with where the stars are
+
+
+# significances measured by t-tests, didn't use
+  # dat %>% ggplot() +
+  #   geom_boxplot(aes(x = SV, # reorder(SV, Abundance, decreasing = TRUE),
+  #                    y = Abundance, 
+  #                    # fill = Genus,
+  #                    color = Genus),
+  #                # labels = Genus,
+  #                outlier.shape = NA) +
+  #   geom_point(aes(x = SV,
+  #                  y = Abundance, 
+  #                  color = Genus),
+  #              size = 1,
+  #              position = position_jitter(width = 0.2),
+  #              show.legend = FALSE) +
+  #   geom_point(
+  #     aes(x = SV, y = signif),
+  #     shape = "*", 
+  #     size = 8,
+  #     color = "red",
+  #     show.legend = FALSE) +
+  #   scale_y_continuous(trans = "log10", "Abundance, log10 scale", sec.axis = sec_axis(~ . , name = "Treatement Group")) +
+  #   xlab("SV; Grouped by Phylum") +
+  #   # scale_color_paletteer_d("lisa::OskarSchlemmer") +
+  #   facet_grid(rows = vars(Group), cols = vars(Phylum), space = "free", scales = "free") +
+  #   theme_bw() + # this puts the facet names in nice boxes
+  #   theme(axis.text.x = element_blank(),
+  #         legend.position = "bottom",
+  #         panel.background = element_rect(fill = "gray84", color = "black")
+  #         # panel.border = element_rect(color = "black", fill = NA, size = 1)
+  #   )  +
+  #   ggtitle("Core SVs: >1/10,000 Frequency and >0.35 Prevalence", subtitle = "Defined Using core Function of Microbiome Package")
+  # ggsave("core_SVs_log_y_scale.png")
+#### With wilcox signif stars ------------
+# dat <- data.frame(matrix(nrow = 0, ncol = 3))
+# colnames(dat) <- c("SV", "Group", "Abundance")
+# dat <- rbind(dat, amalgamate_SV_data(atb_phylo.coreW_35@otu_table, "Antibiotics"))
+# 
+# dat <- rbind(dat, amalgamate_SV_data(no_atb_phylo.coreW_35@otu_table, "No antibiotics"))
+# # head(dat)
+# # dim(dat)
+# 
+# temp <- as.data.frame(atb_phylo.coreW_35@tax_table)
+# temp$SV <- row.names(temp)
+# dat <- left_join(dat, temp, by = "SV")
+
+core_SVs_sig_diff_on_wilcox_test <- c("GGAATATTGGACAATGGGCGAAAGCCTGATCCAGCCATGCCGCGTGTGTGAAGAAGGCCTTTTGGTTGTAAAGCACTTTAAGTGGGGAGGAAAAGCTTATGGTTAATACCCATAAGCCCTGACGTTACCCACAGAATAAGCACCGGCTAACTCTGTGCCAGCAGCCGCGGTAATACAGAGGGTGCAAGCGTTAATCGGAATTACTGGGCGTAAAGCGCGCGTAGGTGGTTATTTAAGTCAGATGTGAAAGCCCCGGGCTTAACCTGGGAACTGCATCTGATACTGGATAACTAGAGTAGGTGAGAGGGGAGTAGAATTCCAGGTGTAGCGGTGAAATGCGTAGAGATCTGGAGGAATACCGATGGCGAAGGCAGCTCCCTGGCATCATACTGACACTGAGGTGCGAAAGCGTGGGTAGCAAACAG",
+                                      "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTAGGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG",
+                                      "GGAATCTTCGGCAATGGACGGAAGTCTGACCGAGCAACGCCGCGTGAGTGAAGAAGGTTTTCGGATCGTAAAGCTCTGTTGTAAGAGAAGAACGAGTGTGAGAGTGGAAAGTTCACACTGTGACGGTATCTTACCAGAAAGGGACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTCCCGAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGCGCAGGCGGTTAGATAAGTCTGAAGTTAAAGGCTGTGGCTTAACCATAGTACGCTTTGGAAACTGTTTAACTTGAGTGCAAGAGGGGAGAGTGGAATTCCATGTGTAGCGGTGAAATGCGTAGATATATGGAGGAACACCGGTGGCGAAAGCGGCTCTCTGGCTTGTAACTGACGCTGAGGCTCGAAAGCGTGGGGAGCAAACAG",
+                                      "GGAATCTTCCGCAATGGGCGAAAGCCTGACGGAGCAACGCCGCGTGAGTGATGAAGGTCTTCGGATCGTAAAACTCTGTTATTAGGGAAGAACAAATGTGTAAGTAACTATGCACGTCTTGACGGTACCTAATCAGAAAGCCACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTGGCAAGCGTTATCCGGAATTATTGGGCGTAAAGCGCGCGTAGGCGGTTTTTTAAGTCTGATGTGAAAGCCCACGGCTCAACCGTGGAGGGTCATTGGAAACTGGAAAACTTGAGTGCAGAAGAGGAAAGTGGAATTCCATGTGTAGCGGTGAAATGCGCAGAGATATGGAGGAACACCAGTGGCGAAGGCGACTTTCTGGTCTGTAACTGACGCTGATGTGCGAAAGCGTGGGGATCAAACAG")
+
+dat$wilcox <- NA
 for (i in 1:nrow(dat)) {
-  if (!is.na(dat$signif[i])) {
-    dat$signif[i] <- 1.2
+  if (dat$SV[i] %in% core_SVs_sig_diff_on_wilcox_test) {
+    dat$wilcox[i] <- 4
+  }
+}
+
+dat$special <- NA
+for (i in 1:nrow(dat)) {
+  if (dat$Genus[i] == "Streptococcus") {
+    dat$Genus[i] <- "Streptococcus +"
+    dat$special[i] <- 3}
+}
+
+# playing with where the stars are
+# 
+for (i in 1:nrow(dat)) {
+  if (!is.na(dat$special[i])) {
+    dat$special[i] <- 2
   }
 }
 
 for (i in 1:nrow(dat)) {
   if (!is.na(dat$wilcox[i])) {
-    dat$wilcox[i] <- 3
+    dat$wilcox[i] <- 4.5
   }
 }
 
@@ -1112,43 +1218,11 @@ dat %>% ggplot() +
              position = position_jitter(width = 0.2),
              show.legend = FALSE) +
   geom_point(
-    aes(x = SV, y = signif),
-    shape = "*", 
-    size = 8,
+    aes(x = SV, y = special),
+    shape = "+",
+    size = 5,
     color = "red",
     show.legend = FALSE) +
-  scale_y_continuous(trans = "log10", "Abundance, log10 scale", sec.axis = sec_axis(~ . , name = "Treatement Group")) +
-  xlab("SV; Grouped by Phylum") +
-  # scale_color_paletteer_d("lisa::OskarSchlemmer") +
-  facet_grid(rows = vars(Group), cols = vars(Phylum), space = "free", scales = "free") +
-  theme_bw() + # this puts the facet names in nice boxes
-  theme(axis.text.x = element_blank(),
-        legend.position = "bottom",
-        panel.background = element_rect(fill = "gray84", color = "black")
-        # panel.border = element_rect(color = "black", fill = NA, size = 1)
-  )  +
-  ggtitle("Core SVs: >1/10,000 Frequency and >0.35 Prevalence", subtitle = "Defined Using core Function of Microbiome Package")
-ggsave("core_SVs_log_y_scale.png")
-
-dat %>% ggplot() +
-  geom_boxplot(aes(x = SV, # reorder(SV, Abundance, decreasing = TRUE),
-                   y = Abundance, 
-                   # fill = Genus,
-                   color = Genus),
-               # labels = Genus,
-               outlier.shape = NA) +
-  geom_point(aes(x = SV,
-                 y = Abundance, 
-                 color = Genus),
-             size = 1,
-             position = position_jitter(width = 0.2),
-             show.legend = FALSE) +
-  # geom_point(
-  #   aes(x = SV, y = signif),
-  #   shape = "*", 
-  #   size = 8,
-  #   color = "red",
-  #   show.legend = FALSE) +
   geom_point(
     aes(x = SV, y = wilcox),
     shape = "*", 
@@ -1162,11 +1236,12 @@ dat %>% ggplot() +
   theme_bw() + # this puts the facet names in nice boxes
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
+        legend.text = element_text(face = "italic"),
         panel.background = element_rect(fill = "gray84", color = "black")
         # panel.border = element_rect(color = "black", fill = NA, size = 1)
   )  +
   ggtitle("Core SVs: >1/10,000 Frequency and >0.35 Prevalence")
-ggsave("core_SVs_log_y_wilcox.png")
+ggsave("core_SVs_log_y_wilcox_signif_strep_plus.png")
 
 ### Simple t-tests -----------
 
@@ -1560,9 +1635,9 @@ list(
 #   ggvenn(columns = c("Decontamination then Species Assignment",
 #                      "Species Assignment then Decontamination"))
 
-install.packages("eulerr")
-library(eulerr)
-
+# install.packages("eulerr")
+# library(eulerr)
+phylo_species_then_decontam_rar <- readRDS("phylo_species_then_decontam_rar.rds")
 dat <- list("Decontamination then Species Assignment" = row.names(phylo_decontam_rar@tax_table),
   "Species Assignment then Decontamination" = row.names(phylo_species_then_decontam_rar@tax_table))
 
@@ -1574,12 +1649,13 @@ dat <- list("Decontamination then Species Assignment" = row.names(phylo_decontam
 # I don't like that either, the output is not a ggplot object
 
 
-install.packages("VennDiagram")
-library(VennDiagram)
 
-# this kinda sucks because it goes to file and not the plot window
-venn.diagram(x = dat, 
-             filename = "order_of_operations.png",
+# library(VennDiagram)
+
+
+p <- venn.diagram(x = dat, 
+             filename = NULL,
+             # filename = "order_of_operations.png",
              imagetype = "png",
              fill = c("yellow", "purple"),
              main = "SVs Found, by Order of Cleaning Steps",
@@ -1587,7 +1663,7 @@ venn.diagram(x = dat,
              cat.pos = c(320, 140),
              cat.dist = c(0.1,0.1),
              cat.just = list(c(0.2,-0.1), c(0.8,0)))
-             
+grid::grid.draw(p)             
 
 
 
