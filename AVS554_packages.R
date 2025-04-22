@@ -73,6 +73,7 @@ install_optional <- function() {
   install.packages("seqinr")
   install_github("vqv/ggbiplot")
   
+  install.packages("VennDiagram")
   # install.packages("paletteer")
 }
 
@@ -124,6 +125,7 @@ load_libraries <- function() {
   library(vegan3d)
   library(scatterplot3d)
   library(paletteer)
+  library(VennDiagram)
   
   # Load tidyverse last so it has final say in masking functions
   # Too gay to function without the tidyverse, as they say
