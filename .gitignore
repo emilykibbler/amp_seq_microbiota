@@ -20,5 +20,6 @@ DADA2_paper
 lamb_200_trim
 AVS_554.Rproj
 for_gabby.R
+lab3_functions.R
 .DS_Store
 corr_plot_abbreviated_code.R

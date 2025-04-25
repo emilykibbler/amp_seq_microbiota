@@ -1,4 +1,4 @@
-# 5. Optional: search for strings in your data
+## Lab 2 ---------
 
 search_strings <- function(bases, fastq_dot_gz) {
   ## specify one file name to look through
@@ -107,65 +107,53 @@ filtering <- function(dat, trimleft = 10, trimright = 0, trunclen = 0) {
 }
 
 
+## Lab 3--------
 
-# 
-# ggplot(as.data.frame(filtoutput)) + 
-#   geom_point(aes(row.names(filtoutput), reads.in),color = "blue") + geom_point(aes(row.names(filtoutput), reads.out), color = "orange")
+create_and_plot_error_profile <- function(info, bases = 1e6) {
+  set.seed(1234) 
+  for (i in 1:nrow(info)) {
+    # 4. Learn the error rates from your sequencing run. Some error is inherent to sequencing run, so this should be done on each run separately, and you can combine multiple datasets later at the sequence table step. Be sure to include controls or low quality samples for learning error. When using smaller datasets, DADA2 recommended nbases=1e6 reads, but for the big data workflow, it recommended nbases=2e6. Multithread = TRUE if you are using a mac that can handle it.
+    filtered_file_names <- list.files(info$filt_dir[i], full.names = TRUE)
+    # if there are any other types of files, take them out
+    filtered_file_names <- filtered_file_names[grep("_filt.fastq", filtered_file_names)]
+    if (length(filtered_file_names) == 0) {
+      print("No _filt data files found in", gsub("^.*/", "", info$filt_dir[i]))
+      if (i != nrow(info)) {
+        print("Proceeding, looking for other filtered data subsets")
+      }
+    }
+    err <- learnErrors(filtered_file_names, nbases = bases, multithread = TRUE, randomize = TRUE) #I can use multithread=TRUE because I'm on a mac
+    # 5. Save the error profiles to output files
+    saveRDS(err, paste0("error_profile_", info$data_subset[i], ".rds")) 
+    plot_name <- paste(info$project[i], info$data_subset[i], "filtered_error_profile", sep = "_")
+    p <- plotErrors(err, nominalQ = TRUE) +
+      ggtitle(str_to_title(str_replace_all(plot_name, "_", " ")))
+    ggsave(paste0(plot_name, ".png"), p)
+    print(p)
+  }
+}
 
 
 
-# for (i in 1:nrow(df)) {
-#   temp <-  df[i,]$y_vals[[1]]
-#   p <- ggplot() +
-#     geom_boxplot(aes(y = temp))
-#   ggsave(filename = paste0(i, "_randplot.png"), plot = p)
-#   print(p)
-# }
-
-
- 
-
-# p <- plotQualityProfile(file_info[1,]$file_names_full[[1]], aggregate = TRUE) +
-#   ggtitle(paste(file_info[1,]$project, file_info[1,]$data_subset, "quality plot"))
-# ggsave(plot = p, filename = paste(file_info[1,]$project, file_info[1,]$data_subset, "quality_plot.png", sep = "_")) 
-  
-#   
-#   plotQualityProfile(full_fns_raw_fwd, aggregate = T); beep() # aggregates all forward reads/read1
-# ggsave("raw_lamb_f_qplot.png")
-# 
-# plotQualityProfile(full_fns_raw_rev, aggregate = T); beep() # aggregates all reverse reads/read2
-# ggsave(paste0(parent_dir, "/raw_lamb_r_qplot.png"))
-# 
-# 
-# # dir.create(paste0(parent_dir, "/filtered_b1")) 
-# 
-# 
-# # parent_dir <- "/Users/emilykibbler/Desktop/projects/R/AVS_554/scallop_data"
-# 
-# # "Batch 1" will be abbreviated as b1 and "Batch 2" as b2
-# # Sequencing data is all forward reads but was done twice in technical repeats
-# # Rev data was so poor it was not made available by Dr. Isqhaq
-# 
-# path_raw_b1 <- paste0(parent_dir, "/batch1_raw") # folder for data files
-# path_raw_b2 <- paste0(parent_dir, "/batch2_raw")
-# fns_raw_b1 <- list.files(path_raw_b1) # file names
-# fns_raw_b2 <- list.files(path_raw_b2) # Fully specify the path, and file names (fns) for the reads.This will come in handy later
-# 
-# full_fns_raw_b1 <- list.files(path_raw_b1, full.names = TRUE) # file names with the path
-# full_fns_raw_b2 <- list.files(path_raw_b2, full.names = TRUE)
-# 
-# 
-# # 2. Specify what file names (fastq files) to look for in that folder based on the type of file extension. As written, this looks for only zipped (gz) files.
-# 
-# fastqs_b1 <- fns_raw_b1[grepl('.gz', fns_raw_b1)]
-# fastqs_b2 <- fns_raw_b2[grepl('.gz', fns_raw_b2)] 
-# # head(fastqs_b1)
-# 
-# # 4. Pull the sample names by reading the forward read file names, cutting it, and taking the sample name chunk.
-# sample_names_b1 <- sapply(strsplit(basename(fastqs_b1), '.fas'), `[`, 1) 
-# sample_names_b2 <- sapply(strsplit(basename(fastqs_b2), '.fas'), `[`, 1) 
-# 
-# 
-# # 5. Assign the sample names to the list of Read 1 forward fastq files
-# names(fastqs_b1) <- sample_names_b1
-# names(fastqs_b2) <- sample_names_b2
+make_SV_summary <- function(seqtab_input) {
+  if (class(seqtab_input) != "data.frame") {
+    # print("Data frame is the expected input")
+    # print(paste("Your input is:", class(seqtab_input)))
+    stop(paste("Data frame is the expected input.", "\n", "Your input is:", class(seqtab_input)))
+  }
+  summary <- data.frame(matrix(ncol = 2, nrow = 0)) # empty df to dump row-wise data into
+  colnames(summary) <- c("sample", "SVs")
+  for (i in 1:nrow(seqtab_input)) {
+    temp <- data.frame(matrix(ncol = 2, nrow = 0))
+    colnames(temp) <- c("sample", "SVs")
+    # For each row in seqtab, report how many SVs (columns of seqtab) with reads there were
+    temp[1,] <- c(rownames(seqtab_input)[i], length(seqtab_input[i,][seqtab_input[i,] > 0]))
+    summary <- rbind(temp, summary)
+  }
+  read_totals <- as.data.frame(rowSums(seqtab_input))
+  read_totals$sample <- row.names(read_totals)
+  colnames(read_totals) <- c("filt_reads", "sample")
+  summary <- merge(summary, read_totals, by = "sample")
+  summary$SVs <- as.numeric(summary$SVs)
+  return(summary)
+}
