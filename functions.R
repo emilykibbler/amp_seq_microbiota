@@ -318,7 +318,16 @@ relaxed_clean_phylo_data <- function(phyloseq_object, neg_con = list(), batch_co
   saveRDS(summary, "cleaning_summary.rds")
   return(clean)
 }
-
+## Lab ? ----
+# just a little something to help with a really big data set
+esk_add_species <- function(all_taxa_matrix, desired_range, with_species, fp = 'silva_species_assignment_v138.1.fa.gz') {
+  temp <- addSpecies(all_taxa_matrix[desired_range,], 
+                     fp, 
+                     allowMultiple = FALSE, 
+                     verbose = FALSE)
+  with_species <- rbind(with_species, temp)
+  return(with_species)
+}
 ## Lab 8 ------------
 
 print_norm_check <- function(input_test){

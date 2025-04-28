@@ -12,16 +12,18 @@ install_necessary <- function() {
   install.packages("tidyverse") 
   # install devtools which will allow you to install the package from GitHub
   install.packages("devtools")
-  install_github("labbcb/Rqc")
-  
+  install.packages("remotes")
+  # install_github("labbcb/Rqc")
+  remotes::install_github("labbcb/Rqc")
   
   ## install these packages at your convenience ----
   BiocManager::install('phyloseq') # the data interpretation program
   BiocManager::install("microbiome") 
   install.packages("vegan") # statistical package
   install.packages("ape") # reading, writing, plotting, and manipulating phylogenetic trees
-  install.packages("plyr")  # data manipulation and a dependancy of dplyr
-  install.packages("dplyr") # data manipulation 
+  # these are in the tidyverse
+  # install.packages("plyr")  # data manipulation and a dependancy of dplyr
+  # install.packages("dplyr") # data manipulation 
   install.packages("lme4") # linear mixed models
   install.packages("lmerTest") # and permutational capacity to go along with it
   install.packages("emmeans")
@@ -35,25 +37,15 @@ install_necessary <- function() {
   BiocManager::install("decontam")
   
   
-  # Sequence quality, lab 2
-  # install devtools which will allow you to install the package from GitHub
-  # install.packages("devtools") # in the install_necessary function
-  install.packages("devtools")
-  # more info on this package: https://www.rdocumentation.org/packages/Rqc/versions/1.6.2
-  install_github("labbcb/Rqc")
-  
   install.packages("readxl")
   install.packages("conover.test")
   
   install.packages("asbio")
-  install.packages("microbiome")
+  # install.packages("microbiome")
   
   install.packages('vegan3d')
   install.packages('scatterplot3d')
 
-  # library(vegan)
-
-  
 }
 
 install_optional <- function() {
@@ -66,15 +58,17 @@ install_optional <- function() {
   BiocManager::install("GenomeInfoDbData", force = TRUE)
   install.packages("ggpubr")
   install.packages("ggtext")
-  install.packages("remotes")
+
   remotes::install_github("twbattaglia/btools")
   # if (!require(devtools)) install.packages("devtools")
   devtools::install_github("gaospecial/ggVennDiagram")
   install.packages("seqinr")
-  install_github("vqv/ggbiplot")
+  remotes::install_github("vqv/ggbiplot")
   
   install.packages("VennDiagram")
-  # install.packages("paletteer")
+  install.packages("paletteer")
+  install.packages("PerformanceAnalytics")
+  install.packages("asbio")
 }
 
 

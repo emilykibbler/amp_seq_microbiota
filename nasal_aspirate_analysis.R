@@ -3,15 +3,17 @@
 
 setwd("/Users/emilykibbler/Desktop/projects/R/AVS_554/nasal")
 
+# 
+# source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab2_functions.R")
+# source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab3_functions.R")
+# source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab5_functions.R")
+# source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab8_functions.R")
+# source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab9_functions.R")
 
-source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab2_functions.R")
-source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab3_functions.R")
-source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab5_functions.R")
-source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab8_functions.R")
-source("/Users/emilykibbler/Desktop/projects/R/AVS_554/lab9_functions.R")
+source("/Users/emilykibbler/Desktop/projects/R/AVS_554/functions.R")
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/AVS554_packages.R")
-# install_necessary()
-# install_optional()
+install_necessary()
+install_optional()
 
 load_libraries()
 
@@ -122,13 +124,13 @@ rowSums(seqtab)
 saveRDS(seqtab, "seqtab.rds")
 seqtab <- readRDS("seqtab.rds")
 
-SVs_found_by_sample <- make_SV_summary(seqtab) # this function is in lab3_functions
+SVs_found_by_sample <- make_SV_summary(as.data.frame(seqtab)) 
 summary(SVs_found_by_sample$SVs[1:76])
 View(SVs_found_by_sample)
 # Fewest SVs: Neg13_R1_F_filt.fastq.gz -- 1
 # Most SVs: B213_R1_F_filt.fastq.gz -- 532
 
-summary(SVs_found_by_sample$SVs[1:76])
+summary(SVs_found_by_sample$SVs[1:76]) # after 76 are the lab negatives
 comparison[nrow(comparison) + 1, ] <- c("Median ASV per exp_samp", 144.5, 80)
 
 
