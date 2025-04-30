@@ -1,4 +1,23 @@
-## Start -------
+## Short intro -----
+
+# This analysis is on the data from this paper:
+
+# Crovetto, F., Selma-Royo, M., Crispi, F. et al. 
+# Nasopharyngeal microbiota profiling of pregnant women with SARS-CoV-2 infection. 
+# Sci Rep 12, 13404 (2022). https://doi.org/10.1038/s41598-022-17542-z
+
+# 16S amplicon sequencing reads have generously been made available in the SRA
+# These are used in this pipeline for analyzing microbial population composition
+
+# This code is based on a previous semester project;
+# However, the focus here is comparing this previously-developed pipeline to a new (to me) pipeline:
+# Qiime2 pipeline, which I ran in a combination of interactive and SLURM scripts
+# on the Ohio Supercomputer platform
+# The command line code will also be available at github.com/emilykibbler/amp_seq_microbiota
+
+
+
+## Start ----------
 setwd("/Users/emilykibbler/Desktop/projects/bms690")
 
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/functions.R")
@@ -262,12 +281,239 @@ phylo_rar_rich_df <- cbind(phylo_rar_rich, phylo_rar_even, phylo_rar_sd)
 
 dim(phylo_rar_rich_df) # 76 x 5
 head(phylo_rar_rich_df)
-# 
-# ggplot(phylo_rar_rich_df, aes(x = SarsCov2, y = Observed)) + 
-#   theme_minimal() + 
-#   geom_boxplot(aes(color = SarsCov2)) +
-#   theme(legend.position = "none") +
-#   xlab("") + 
-#   ylab("Bacterial Richness (SVs)") + 
-#   # theme(text = element_text(size = 20)) # increases font size
-#   ggtitle("Observed bacterial richness")
+
+## Changing order of things ----------
+
+summary((rowSums(otu_table(phylo))))
+# Min 2810, median 43614, max 79055
+
+dat <- as.data.frame(otu_table(phylo, taxa_are_rows = FALSE))
+view(dat)
+
+tab <- otu_table(phylo, taxa_are_rows = FALSE)
+class(tab) <- "matrix" # you get a warning here, ignore, this is what we need to have
+tab <- t(tab) # transpose observations to rows
+r_curve <- rarecurve(tab, step = 10, cex = 0.5, label = FALSE) 
+# I don't really get this, what is the Y axis? It's not SVs, I have way more of those
+
+phylo_no_spec_rar <- rarefy_even_depth(phylo, 
+                               sample.size = 28000, # rarefaction depth: just above the minimum sample depth (but a nice even number)
+                               replace = TRUE, #sampling with or without replacement
+                               trimOTUs = TRUE, #remove SVs left empty
+                               rngseed = 711, 
+                               verbose = TRUE)
+phylo_no_spec_rar
+# 46 OTUs removed
+
+saveRDS(phylo_no_spec_rar, "phylo_no_spec_rar.rds")
+
+
+# Add species in now
+view(seqtab_nochim) # seqtab_nochim is what I used before as the data for this step
+# sample names are row names, ASV sequences are column names, and reads are in the cells
+class(seqtab_nochim) # matrix array
+dim(seqtab_nochim) # 76 by 12071
+
+view(phylo_no_spec_rar@otu_table)
+# I think that is the equivalent table
+class(phylo_no_spec_rar@otu_table) # phyloseq object
+dim(phylo_no_spec_rar@otu_table) # 76 by 12025
+
+all_taxa_rar <- assignTaxonomy(as.matrix(phylo_no_spec_rar@otu_table), 
+                           'silva_nr99_v138.2_toGenus_trainset.fa.gz',
+                           tryRC = TRUE, # If you didn't get any IDs the first time, Use this to try the reverse complement of your sequences instead
+                           minBoot = 75, verbose = TRUE); beep("treasure") 
+saveRDS(all_taxa_rar, 'all_taxa_rar.rds')
+write.csv(all_taxa_rar, 'all_taxa_rar.csv')
+
+
+dim(all_taxa_rar)
+
+all_taxa_species_rar <- addSpecies(all_taxa_rar[1:2,], 
+                               'silva_v138.2_assignSpecies.fa.gz', 
+                               allowMultiple = FALSE, 
+                               verbose = FALSE)
+
+all_taxa_species_rar <- esk_add_species(all_taxa_rar, 3:5000, all_taxa_species_rar, fp = 'silva_v138.2_assignSpecies.fa.gz')
+all_taxa_species_rar <- esk_add_species(all_taxa_rar, 5001:10000, all_taxa_species_rar, fp = 'silva_v138.2_assignSpecies.fa.gz')#; beep("treasure")
+all_taxa_species_rar <- esk_add_species(all_taxa_rar, 10001:nrow(all_taxa_rar), all_taxa_species_rar, fp = 'silva_v138.2_assignSpecies.fa.gz'); beep("treasure")
+write_rds(all_taxa_species_rar, "all_taxa_species_rars.rds")
+
+# Put that together with the phyloseq object
+otu_t <- otu_table(phylo_rar, taxa_are_rows = FALSE)
+## create a phyloseq object with all samples
+phylo_rar_then_species <- phyloseq(otu_table(otu_t, taxa_are_rows = FALSE), 
+                                        sample_data(meta),
+                                        tax_table(all_taxa_species_rar))
+
+
+##Alpha diversity analysis, imported from Qiime analysis ----------
+faith <- read.table("faith_group_signif.tsv", sep = "\t", header = TRUE)
+faith <- rename(faith, "Value" = faith_pd)
+# wilcox.test(subset(faith, SarsCov2 == "pos")$Value, subset(faith, SarsCov2 == "neg")$Value)
+t.test(subset(faith, SarsCov2 == "pos")$Value, subset(faith, SarsCov2 == "neg")$Value)
+
+evenness <- read.table("even_group_signif.tsv", sep = "\t", header = TRUE)
+evenness <- rename(evenness, "Value" = pielou_evenness)
+t.test(subset(evenness, SarsCov2 == "pos")$Value, subset(evenness, SarsCov2 == "neg")$Value)
+# wilcox.test(subset(evenness, SarsCov2 == "pos")$Value, subset(evenness, SarsCov2 == "neg")$Value)
+
+shannon <- read.table("shannon_group_signif.tsv", sep = "\t", header = TRUE)
+shannon <- rename(shannon, "Value" = shannon_entropy)
+t.test(subset(shannon, SarsCov2 == "pos")$Value, subset(shannon, SarsCov2 == "neg")$Value)
+# wilcox.test(subset(shannon, SarsCov2 == "pos")$Value, subset(shannon, SarsCov2 == "neg")$Value)
+
+obs <- read.table("observed_stats.tsv", sep = "\t", header = T)
+obs <- rename(obs, "Value" = observed_features)
+obs$Metric <- "Observed"
+t.test(subset(obs, SarsCov2 == "pos")$Value, subset(obs, SarsCov2 == "neg")$Value)
+
+## DADA analysis, alpha div------------------
+
+# Rare, then species
+diversity <- estimate_richness(phylo_no_spec_rar, measures = c("Shannon", "Observed"))
+even <- evenness(phylo_no_spec_rar, index = "pielou")
+diversity <- cbind(diversity, even)
+diversity$sample.id <- row.names(diversity)
+diversity <- merge(diversity, meta, by = "sample.id")
+t.test(subset(diversity, SarsCov2 == "pos")$Observed, subset(diversity, SarsCov2 == "neg")$Observed)
+t.test(subset(diversity, SarsCov2 == "pos")$Shannon, subset(diversity, SarsCov2 == "neg")$Shannon)
+t.test(subset(diversity, SarsCov2 == "pos")$pielou, subset(diversity, SarsCov2 == "neg")$pielou)
+
+# Species, filter, then rar
+diversity <- estimate_richness(phylo_rar, measures = c("Shannon", "Observed"))
+even <- evenness(phylo_rar, index = "pielou")
+diversity <- cbind(diversity, even)
+diversity$sample.id <- row.names(diversity)
+diversity <- merge(diversity, meta, by = "sample.id")
+t.test(subset(diversity, SarsCov2 == "pos")$Observed, subset(diversity, SarsCov2 == "neg")$Observed)
+t.test(subset(diversity, SarsCov2 == "pos")$Shannon, subset(diversity, SarsCov2 == "neg")$Shannon)
+t.test(subset(diversity, SarsCov2 == "pos")$pielou, subset(diversity, SarsCov2 == "neg")$pielou)
+
+
+
+
+## DESeq-----------------------
+
+# grab phyloseq data for use in deseq
+diagdds = phyloseq_to_deseq2(phylo_rar_then_species, ~ SarsCov2)
+
+# calculate differential abundance
+gm_mean =  function(x, na.rm = TRUE){
+  exp(sum(log(x[x > 0]), na.rm = na.rm) / length(x))
+}
+geoMeans = apply(counts(diagdds), 1, gm_mean)
+diagdds = suppressMessages(estimateSizeFactors(diagdds, geoMeans = geoMeans))
+diagdds = suppressMessages(DESeq(diagdds, fitType = "local"))
+
+# calculate significance for those abundance calculations
+res <- suppressMessages(results(diagdds))
+res <- res[order(res$padj, na.last = NA), ]
+alpha = 0.01
+sigtab = res[(res$padj < alpha), ]
+sigtab = cbind(as(sigtab, "data.frame"), 
+               as(tax_table(phylo_rar_then_species)[rownames(sigtab), ], 
+                  "matrix")) #CHANGE ME if you didn't subset your data
+
+head(sigtab)
+dim(sigtab) 
+
+
+# calculate log changes and set
+# sigtab = sigtab[, c("baseMean", "log2FoldChange", "lfcSE", "padj", "Phylum", "Class", "Order", "Family", "Genus")] #CHANGE ME add Order or Species - if you have it
+sigtab <- subset(sigtab, select = -Species) # nothing in here got species-level assignment so just drop that
+# Phylum order
+x = tapply(sigtab$log2FoldChange, sigtab$Phylum, function(x) max(x))
+x = sort(x, TRUE)
+sigtab$Phylum = factor(as.character(sigtab$Phylum), levels = names(x))
+
+# Genus order
+x = tapply(sigtab$log2FoldChange, sigtab$Genus, function(x) max(x))
+x = sort(x, TRUE)
+sigtab$Genus = factor(as.character(sigtab$Genus), levels = names(x))
+
+
+## if the Genus is empty, replace with the Family 
+sigtab$Genus = ifelse(is.na(sigtab$Genus), 
+                      paste(sigtab$Family), 
+                      paste(sigtab$Genus)) 
+view(sigtab)
+
+DEseq_sig_SVs <- row.names(sigtab)
+
+## Qiime DA ----------------------
+
+da <- read.csv("qiime_da.csv")
+head(da)
+da <- subset(da, select = -X)
+tax <- read.table("silva_tax_assignments.tsv", sep = "\t", header = TRUE)
+head(tax)
+tax <- rename(tax, "id" = Feature.ID)
+da <- merge(da, tax, by = "id")
+
+da$kingdom <- str_remove_all(str_split_i(da$Taxon, ";", 1), "d__")
+da$Phylum <- str_remove_all(str_split_i(da$Taxon, ";", 2), "p__")
+da$Class <- str_remove_all(str_split_i(da$Taxon, ";", 3), "c__")
+da$Order <- str_remove_all(str_split_i(da$Taxon, ";", 4), "o__")
+da$Family <- str_remove_all(str_split_i(da$Taxon, ";", 5), "f__")
+da$Genus <- str_remove_all(str_split_i(da$Taxon, ";", 6), "g__")
+da$Species <- str_remove_all(str_split_i(da$Taxon, ";", 7), "s__")
+
+head(da)
+da <- subset(da, select = -Species)
+
+da$Genus = ifelse(is.na(da$Genus), 
+                      paste(da$Family), 
+                      paste(da$Genus)) 
+
+da$Genus = ifelse(da$Genus == "NA", 
+                  paste(da$kingdom), 
+                  paste(da$Genus)) 
+da[5,"Genus"] <- "Mitochondria_A"
+da[6,"Genus"] <- "Mitochondria_B"
+da[9,"Genus"] <- "Mitochondria_C"
+
+da[2,"Genus"] <- "Holdemanella_A"
+da[8,"Genus"] <- "Holdemanella_B"
+
+
+# write_rds(da, "da.rds")
+
+# head(read.table("descriptive_stats.tsv", sep = "\t", header = TRUE))
+
+seqs <- readDNAStringSet("sequences.fasta", format = "fasta")
+seqs <- as.data.frame(seqs)
+seqs$id <- row.names(seqs)
+seqs <- rename(seqs, "Sequence" = x)
+
+da <- merge(da, seqs, by = "id")
+
+write_rds(da, "da.rds")
+
+match(da$Sequence, DEseq_sig_SVs)
+view(da[c(2,4),])
+
+match(DEseq_sig_SVs, da$Sequence)
+
+df <- as.data.frame(phylo_rar_then_species@tax_table)
+
+view(subset(df, sequence %in% da$Sequence))
+da <- subset(da, select = -Taxon)
+
+colnames(df) <- paste(colnames(df), "phyloseq", sep = "_")
+df$Sequence <- row.names(df)
+
+df <- left_join(da, df, by = "Sequence")
+
+new_col_order <- colnames(df)[1:10]
+new_col_order <- c(new_col_order, "kingdom", "Kingdom_phyloseq",
+                   "Phylum", "Phylum_phyloseq",
+                   "Class", "Class_phyloseq",
+                   "Order", "Order_phyloseq",
+                   "Family", "Family_phyloseq",
+                   "Genus", "Genus_phyloseq",
+                   "Species_phyloseq",
+                   "Sequence")
+
+df <- df[,new_col_order]
+view(df)

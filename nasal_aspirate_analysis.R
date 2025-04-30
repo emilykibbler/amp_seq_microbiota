@@ -2074,9 +2074,10 @@ cap_plot +
     show.legend = FALSE
   ) 
 
-## Done up tp here --------
 
-## variance partitioning --------------
+##Variance partitioning --------------
+# done up to here
+
 # How much did any one factor contribute to the sample clustering?
 # http://www.hiercourse.com/docs/variationPartitioning.html 
 
