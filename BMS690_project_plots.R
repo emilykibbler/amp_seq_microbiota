@@ -54,9 +54,6 @@ colnames(track250) <- c("reads.in","filtered", "nonchimeras")
 head(track250)
 saveRDS(track250, 'track250.rds')
 
-
-# 8. Plot all reads along the QC workflow
-# make a prettier plot by taking the data
 # plotData <- as.data.frame(track) %>% gather(type, totals, reads.in, filtered, nonchimeras)
 
 #order the types from raw reads to cleanest
@@ -83,17 +80,7 @@ ggplot(track, aes(x = Sample_type, y = as.numeric(totals))) +
   # scale_y_continuous(trans = "log") +
   ggtitle("Reads by filtering step")
 # 
-# plot_dat <- plotData[,2:3]
-# colnames(plot_dat) <- c("Step", "Reads")
-# plot_dat$method <- "DADA2"
-# plot_dat$Step <- str_replace_all(plot_dat$Step, "filtered", "Filtered and trimmed reads")
-# plot_dat$Step <- str_replace_all(plot_dat$Step, "reads.in", "Unfiltered reads")
-# plot_dat$Step <- str_replace_all(plot_dat$Step, "nonchimeras", "Nonchimeric reads")
-# temp <- as.data.frame(qiime_plotData[,2:3])
-# temp$method <- "Qiime2"
-# plot_dat <- rbind(plot_dat, temp)
-# unique(plot_dat$Step)
-# plot_dat$Reads <- as.numeric(plot_dat$Reads)
+
 track250$method <- "DADA, 250"
 track$method <- "DADA, custom"
 track250$sample.id <- row.names(track250)
@@ -363,12 +350,6 @@ tax <- rename(tax, "id" = Feature.ID)
 da <- merge(da, tax, by = "id")
 
 
-
-
-
-
-
-
 da %>%
   ggplot(aes(y = reorder(Genus, lfc), x = lfc, fill = Phylum)) +
   geom_bar(stat = "identity") +
@@ -433,3 +414,30 @@ anova_res %>%
           axis.text.x = element_blank()) +
     ggtitle("PERMANOVA results")
 ggsave("beta_permanova.png")
+
+## RF ---------------------
+
+rf_model <- readRDS("rf_model.rds")
+
+# set color palette  
+col.bro <- (rainbow(6))
+# add white to that color list
+col.bro <- append(col.bro, "#ffffff", after = 6)
+
+
+# adjusted plot for factorial data, recommend using sample ID as 'factor A' (x value)
+ggplot(rf_model, aes(as.factor(Sample), reorder(variable, rescale, mean))) + 
+  theme_minimal() + 
+  facet_grid(.~SarsCov2, space = "free", scales = "free") + #set up graph facets to separate out levels of FactorA
+  geom_tile(aes(fill = rescale), color = "gray") + #add the heatmap coloring 
+  scale_fill_gradientn(colors = rev(col.bro), na.value = 'white') + #use the preset color palette
+  labs(fill = "Log abundance") + #rename legend heading
+  theme(legend.position = 'right',
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_line(linewidth = 2),
+        axis.text.y = element_text(size = 8),
+        panel.background = element_rect(fill = "gray84", color = "black")) +
+  ylab('Predictor Taxa') +
+  xlab('Sample') +
+  ggtitle("Random Forest")
+ggsave("rf_heatmap.png")

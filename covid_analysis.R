@@ -451,13 +451,15 @@ head(tax)
 tax <- rename(tax, "id" = Feature.ID)
 da <- merge(da, tax, by = "id")
 
-da$kingdom <- str_remove_all(str_split_i(da$Taxon, ";", 1), "d__")
-da$Phylum <- str_remove_all(str_split_i(da$Taxon, ";", 2), "p__")
-da$Class <- str_remove_all(str_split_i(da$Taxon, ";", 3), "c__")
-da$Order <- str_remove_all(str_split_i(da$Taxon, ";", 4), "o__")
-da$Family <- str_remove_all(str_split_i(da$Taxon, ";", 5), "f__")
-da$Genus <- str_remove_all(str_split_i(da$Taxon, ";", 6), "g__")
-da$Species <- str_remove_all(str_split_i(da$Taxon, ";", 7), "s__")
+# da$kingdom <- str_remove_all(str_split_i(da$Taxon, ";", 1), "d__")
+# da$Phylum <- str_remove_all(str_split_i(da$Taxon, ";", 2), "p__")
+# da$Class <- str_remove_all(str_split_i(da$Taxon, ";", 3), "c__")
+# da$Order <- str_remove_all(str_split_i(da$Taxon, ";", 4), "o__")
+# da$Family <- str_remove_all(str_split_i(da$Taxon, ";", 5), "f__")
+# da$Genus <- str_remove_all(str_split_i(da$Taxon, ";", 6), "g__")
+# da$Species <- str_remove_all(str_split_i(da$Taxon, ";", 7), "s__")
+
+da <- split_taxon_column(da)
 
 head(da)
 da <- subset(da, select = -Species)
@@ -517,3 +519,204 @@ new_col_order <- c(new_col_order, "kingdom", "Kingdom_phyloseq",
 
 df <- df[,new_col_order]
 view(df)
+
+## Feature importance -----------------
+
+feat_imp <- read.table("feature_importance.tsv", sep = "\t", header = TRUE)
+head(feat_imp)
+summary(feat_imp$importance)
+dim(feat_imp) # 9388 features
+feat_imp <- subset(feat_imp, importance != 0)
+dim(feat_imp) # 704 with >0 importance
+
+# Qiime generated a heat map with feature labels but no text files of them
+# I used google docs to try to transcribe
+
+heat_feats <- read.csv("heatmap_features.csv", header = FALSE)
+# head(heat_feats)
+colnames(heat_feats) <- ("id")
+
+sum(heat_feats$id %in% feat_imp$id)
+nrow(heat_feats)
+# 49 out of 50, good job google
+
+heat_feats <- left_join(heat_feats, feat_imp, by = "id")
+head(heat_feats)
+# features <- rename(features, "id" = "Feature.ID")
+# head(features)
+sum(heat_feats$id %in% features$id)
+# heat_feats <- left_join(heat_feats, features)
+view(heat_feats)
+
+
+heat_feats <- read.csv("heatmap_features.csv", header = FALSE)
+colnames(heat_feats) <- ("id")
+heat_feats <- left_join(heat_feats, feat_imp, by = "id")
+heat_feats <- left_join(heat_feats, tax, by = "id")
+view(heat_feats)
+
+heat_feats <- split_taxon_column(heat_feats)
+
+write.csv(heat_feats, "heat_feats.csv", row.names = FALSE, na = "")
+head(heat_feats)
+
+
+## Random forest -------------------
+
+
+# Make a dataframe of training data with OTUs as column and samples as rows, which is the phyloseq OTU table
+phylo_rar_then_species <- readRDS("phylo_rar_then_species.rds")
+predictors <- otu_table(phylo_rar_then_species, taxa_are_rows = FALSE)
+
+dim(predictors)
+# 76 samples, 4356 SVs
+
+# output phyloseq tax table as a dataframe to make it manipulable
+tax.df <- data.frame(tax_table(phylo_rar_then_species), stringsAsFactors = FALSE)
+
+## if the Genus is empty, replace with the Family
+tax.df$Genus = ifelse(is.na(tax.df$Genus), 
+                      paste(tax.df$Family), 
+                      paste(tax.df$Genus)) 
+
+# bind Genus and Species together
+tax.df$Genus.species <- paste(tax.df$Genus, tax.df$Species)
+tax.df$Genus.species <- str_remove_all(tax.df$Genus.species, " NA")
+
+# set column of combined genus and species names as the column names for the predictors, replacing the full SV
+colnames(predictors) <- tax.df$Genus.species
+
+# clean up some of the other taxa info
+# I think I want to keep these
+# colnames(predictors) = gsub("_unclassified", "", colnames(predictors))
+# colnames(predictors) = gsub("_Intercertae_Sedis", "", colnames(predictors))
+
+
+
+### start here when choosing factors, can reuse the above lines as needed. one example for factorial data, and one for numeric data is provided. select as needed.
+
+# Make one column for our outcome/response variable. Choose which one applies to the thing you want to test, and then follow factorial or numeric through the rest of the code section.
+response <- as.factor(sample_data(phylo_rar_then_species)$SarsCov2) 
+
+# Combine response and SVs into data frame
+rf.data <- data.frame(response, predictors)
+
+
+# set seed for random number generation reproducibility
+set.seed(2)
+
+# classify for factorial data
+response.pf <- rfPermute(response ~. , data = rf.data, na.action = na.omit, ntree = 500, nrep = 100) #na.omit ignores NAs in data (not tolerated). ntrees is how many forests to build, nreps generates p-value
+
+print(response.pf)
+
+# paste the print out here, especially the OOB error. 1-(Out-of-the-box error) = accuracy of your model
+  
+  # neg pos pct.correct LCI_0.95 UCI_0.95
+  # neg      36   2        94.7     82.3     99.4
+  # pos       3  35        92.1     78.6     98.3
+  # Overall  NA  NA        93.4     85.3     97.8
+
+
+saveRDS(response.pf, "response_pf.rds")
+response.pf <- readRDS("response_pf.rds")
+
+
+# grab which features were labeled "important"
+imp <- importance(response.pf, scale = TRUE)
+
+# Make a data frame with predictor names and their importance
+imp.df <- data.frame(predictors = rownames(imp), imp) 
+
+
+# For factorial data, grab only those features with p-value < 0.05
+imp.sig <- subset(imp.df, MeanDecreaseAccuracy.pval <= 0.05) 
+print(dim(imp.sig)) # 59 x 9
+
+# or For factorial data, sort by importance amount
+imp.sort <- imp.sig[order(imp.sig$MeanDecreaseAccuracy),]
+
+#create levels to the factor based on SV table
+imp.sort$predictors <- factor(imp.sort$predictors, levels = imp.sort$predictors)
+
+# Select the top so many predictors (more than 50 is a crowded graph)
+# imp.top <- imp.sort[1:50, ] # 50 was too busy
+imp.top <- imp.sort[1:30, ]
+
+# figure out what they are and name them, otherwise will just be named the full SV
+otunames <- imp.top$predictors
+# grab the column names from the otu table that match those in the forest set
+pred.abun.colnum <- which(colnames(rf.data) %in% otunames)
+
+# when you find a match, grad the abudnance data
+pred.abun <- rf.data[,sort(c(pred.abun.colnum))]
+
+# make this into a dataframe for manipulation
+pred.abun.df <- data.frame(pred.abun, stringsAsFactors = FALSE)
+
+# use the row.names (sample names) from the phyloseq object to name the samples in your forest
+row.names(pred.abun.df) <- row.names(sample_data(phylo_rar_then_species))
+
+# add some factors that you can use to make your graph pretty, as many as you want
+pred.abun.df$Sample <- row.names(sample_data(phylo_rar_then_species)) #always grab the sample names
+pred.abun.df$SarsCov2 <- sample_data(phylo_rar_then_species)$SarsCov2
+
+# head(pred.abun.df)
+# melt and transform the data using ALL the factors you added
+m <- melt(pred.abun.df, id.vars = c("Sample", "SarsCov2"))
+
+head(m)
+
+
+m$rescale <- log(1 + as.numeric(m$value))
+
+rf_model <- m
+rf_model$variable <- str_replace_all(rf_model$variable, "NA", "SV")
+saveRDS(rf_model, "rf_model.rds")
+
+
+# some alignment stuff -----------
+
+head(heat_feats)
+
+mito_seqs <- subset(heat_feats, Family == "Mitochondria")
+mito_seqs <- subset(mito_seqs, select = -Taxon)
+
+seqs <- readDNAStringSet("sequences.fasta", format = "fasta")
+seqs <- as.data.frame(seqs)
+seqs$id <- row.names(seqs)
+seqs <- rename(seqs, "Sequence" = x)
+
+
+mito_seqs <- left_join(mito_seqs, seqs, by = "id")
+head(mito_seqs)
+head(DNAStringSet(mito_seqs$Sequence))
+
+write.fasta(sequences = DNAStringSet(mito_seqs$Sequence), 
+            names = mito_seqs$id, 
+            file.out = "mito_seqs.fasta")
+
+# BiocManager::install("msa")
+# library(msa)
+
+# mySequences <- readDNAStringSet("mito_seqs.fasta")
+
+mySequences <- DNAStringSet(mito_seqs$Sequence)
+names(mySequences) <- mito_seqs$id
+head(mySequences)
+mySequences
+
+
+myFirstAlignment <- msa(mySequences)
+
+msaPrettyPrint(myFirstAlignment, 
+               output = "pdf", 
+               showNames = "left",
+               showLogo = "none", 
+               askForOverwrite = FALSE, 
+               verbose = FALSE)
+
+
+
+
+
