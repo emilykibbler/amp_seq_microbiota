@@ -513,5 +513,21 @@ SV_abundance_df_creator <- function(input_df, input_phylo) {
 }
 
 
+# Export from Qiime viewer has taxonomic information in one column
+# This function parses it into separate columns
+
+split_taxon_column <- function(df) {
+  df$Domain <- str_remove_all(str_split_i(df$Taxon, ";", 1), "d__")
+  df$Phylum <- str_remove_all(str_split_i(df$Taxon, ";", 2), "p__")
+  df$Class <- str_remove_all(str_split_i(df$Taxon, ";", 3), "c__")
+  df$Order <- str_remove_all(str_split_i(df$Taxon, ";", 4), "o__")
+  df$Family <- str_remove_all(str_split_i(df$Taxon, ";", 5), "f__")
+  df$Genus <- str_remove_all(str_split_i(df$Taxon, ";", 6), "g__")
+  df$Species <- str_remove_all(str_split_i(df$Taxon, ";", 7), "s__")
+  
+  return(df)
+}
+
+
 
 

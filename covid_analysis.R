@@ -37,7 +37,8 @@ dir.create("/Users/emilykibbler/Desktop/projects/bms690/raw/rev_raw")
 file.copy(read1fns, "/Users/emilykibbler/Desktop/projects/bms690/raw/fwd_raw")
 file.copy(read2fns, "/Users/emilykibbler/Desktop/projects/bms690/raw/rev_raw")
 
-## Initial quality inspection, filter and trim ----------
+## Initial quality inspection; filter and trim ----------
+
 file_info <- metadata_import(types = c("fwd", "rev")) # saves a copy as an rds
 qualplots(file_info)
 
@@ -46,9 +47,9 @@ filtoutput <- filterAndTrim(
   file.path(file_info$filt_dir[1], paste0(file_info$sample_names[[1]], "_F_filt.fastq.gz")), 
   file_info$file_names_full[[2]], 
   file.path(file_info$filt_dir[2], paste0(file_info$sample_names[[1]], "_R_filt.fastq.gz")), 
-  trimLeft = c(10, 10), # cuts off the first XX bases from the F,R reads. Trim 10 for Illumina
+  trimLeft = c(10, 10), 
   truncLen = c(284, 224), 
-  maxEE = c(5,5), # max errors tolerated
+  maxEE = c(5,5), # errors tolerated
   verbose = FALSE)
 saveRDS(filtoutput, "filtoutput.rds")
 
@@ -60,6 +61,7 @@ qualplots(file_info, type = "filtered")
 
 file_info <- readRDS("file_info.rds")
 create_and_plot_error_profile(file_info, bases = 1e6) ; beep("treasure") # writes the error profile RDS files
+
 # First time:
   # Fwd: 14274480 total bases in 59477 reads from 1 samples will be used for learning the error rates
   # Rev: 15115440 total bases in 62981 reads from 1 samples will be used for learning the error rates.
@@ -92,14 +94,13 @@ view(seqtab)
 saveRDS(seqtab, "seqtab.rds"); beep("treasure")
 # seqtab <- readRDS("seqtab.rds")
 
-SVs_found_by_sample <- make_SV_summary(as.data.frame(seqtab)) # this function takes so long, look into that
+SVs_found_by_sample <- make_SV_summary(as.data.frame(seqtab)) # this function takes so long, needs troubleshooting... there is probably a more efficient way to do this
 summary(SVs_found_by_sample$SVs)
 # min is 113, median is 365, max is 364
 
 
 ## Remove chimeras.-------------
-# Leave the method as consensus. 
-# multithread processing can be used with mac or linux, and verbose means it will print results to the screen		
+
 seqtab_nochim <- removeBimeraDenovo(seqtab, 
                                     method = "consensus", 
                                     multithread = TRUE,
@@ -129,14 +130,13 @@ sort(rowSums(seqtab_nochim))
 saveRDS(seqtab_nochim, 'seqtab_nochim.rds')
 
 
-# 2. Load the metadata file that goes with your sequencing data so you can match factors to seq data
 meta <- read.table("/Users/emilykibbler/Documents/Classes/BMS_690/cov-project/metadata.tsv", sep = "\t", header = T)
 head(meta)
 row.names(meta) <- meta$sample.id
 saveRDS(meta, "meta.rds")
 
 
-# Lab 5 :Phyloseq First look (Lab 5_A) ------------------------------
+# Phyloseq First look  ------------------------------
 
 # # load data if necessary
 seqtab_nochim <- readRDS('seqtab_nochim.rds')
@@ -149,8 +149,7 @@ saveRDS(seqtab_nochim, 'seqtab_nochim.rds')
 identical(row.names(meta), row.names(seqtab_nochim))
 
 
-## create a phyloseq object with all samples (controls will be subset out later)
-phylo <- phyloseq(otu_table(seqtab_nochim, taxa_are_rows = FALSE), # even though it's called an OTU table, it will use the SVs from my seqtab
+phylo <- phyloseq(otu_table(seqtab_nochim, taxa_are_rows = FALSE), 
                   sample_data(meta))
 
 phylo # 12071 ASVs
@@ -158,8 +157,7 @@ saveRDS(phylo, "phylo.rds")
 phylo <- readRDS("phylo.rds")
 
 
-
-# Plot the taxa sums to see how populated each taxa is (do you have many rare taxa?
+# Plot the taxa sums to see how populated each taxa is (do you have many rare taxa?)
 plot(sort(taxa_sums(phylo), TRUE), 
      type = "h", 
      ylim = c(0, 20)) #limit the y-axis to better see the long tail of rare taxa
@@ -177,12 +175,14 @@ all_taxa <- assignTaxonomy(seqtab_nochim,
 saveRDS(all_taxa, 'all_taxa.rds')
 write.csv(all_taxa, 'all_taxa.csv')
 
-# all_taxa_species <- addSpecies(all_taxa, 
-#                               '/Users/emilykibbler/Desktop/projects/R/AVS_554/nasal/silva_species_assignment_v138.1.fa.gz', 
-#                               allowMultiple = FALSE, 
-#                               verbose = FALSE) ; beep("treasure") 
-# too big to do it all at once
 
+# I didn't end up using this data set very much
+# I was comparing this workflow to the Qiime tutorial workflow, which did not filter by species
+# So that's why I didn't go back and rerun this even when I noticed that version 138.2 has been released
+# I do use the updated version later in this script
+
+# Initiate the data frame to bind the following chunks to
+# because I run out of memory if I try to do all 12k+ lines at once
 all_taxa_species <- addSpecies(all_taxa[1:2,], 
                                '/Users/emilykibbler/Desktop/projects/R/AVS_554/nasal/silva_species_assignment_v138.1.fa.gz', 
                                      allowMultiple = FALSE, 
