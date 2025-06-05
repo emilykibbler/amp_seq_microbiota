@@ -15,9 +15,10 @@
 # on the Ohio Supercomputer platform
 # The command line code will also be available at github.com/emilykibbler/amp_seq_microbiota
 
+# Note: if you are viewing this script in RStudio,
+# click the icon with lines which should pop up on the top right in order to display the table of contents
 
-
-## Start ----------
+## Start -----------
 setwd("/Users/emilykibbler/Desktop/projects/bms690")
 
 source("/Users/emilykibbler/Desktop/projects/R/AVS_554/functions.R")
@@ -27,51 +28,61 @@ source("/Users/emilykibbler/Desktop/projects/R/AVS_554/AVS554_packages.R")
 
 load_libraries()
 
-## Preprocessing ----------
-queso <- list.files("/Users/emilykibbler/Desktop/projects/bms690/raw", full.names = T)
-read1fns <- queso[grep("_1.fastq", queso)]
-read2fns <- queso[grep("_2.fastq", queso)]
-# 
-dir.create("/Users/emilykibbler/Desktop/projects/bms690/raw/fwd_raw")
-dir.create("/Users/emilykibbler/Desktop/projects/bms690/raw/rev_raw")
-file.copy(read1fns, "/Users/emilykibbler/Desktop/projects/bms690/raw/fwd_raw")
-file.copy(read2fns, "/Users/emilykibbler/Desktop/projects/bms690/raw/rev_raw")
+## Preprocessing -------------
+
+# Create a list of current raw data files
+fns <- list.files("bms690/raw", full.names = T)
+# Separate list of all files into read 1 files and read 2 files
+read1fns <- fns[grep("_1.fastq", fns)]
+read2fns <- fns[grep("_2.fastq", fns)]
+# Separate the files and put into separate corresponding directories
+dir.create("bms690/raw/fwd_raw")
+dir.create("bms690/raw/rev_raw")
+file.copy(read1fns, "bms690/raw/fwd_raw")
+file.copy(read2fns, "bms690/raw/rev_raw")
 
 ## Initial quality inspection; filter and trim ----------
 
-file_info <- metadata_import(types = c("fwd", "rev")) # saves a copy as an rds
+# Parse and save file info, e.g., file paths of raw reads, in a data frame for easier calls to those files downstream
+file_info <- metadata_import(types = c("fwd", "rev"))
+# Uses saved file info to create quality plots
 qualplots(file_info)
 
+# Trim reads; call files using paths found in file_info
 filtoutput <- filterAndTrim( 
   file_info$file_names_full[[1]], 
   file.path(file_info$filt_dir[1], paste0(file_info$sample_names[[1]], "_F_filt.fastq.gz")), 
   file_info$file_names_full[[2]], 
   file.path(file_info$filt_dir[2], paste0(file_info$sample_names[[1]], "_R_filt.fastq.gz")), 
   trimLeft = c(10, 10), 
-  truncLen = c(284, 224), 
-  maxEE = c(5,5), # errors tolerated
+  truncLen = c(284, 224), # For this data set, quality score drops below cutoff at cycle 284 and 224 respectively
+  maxEE = c(5,5), # Number of errors tolerated; default sets no limit
   verbose = FALSE)
 saveRDS(filtoutput, "filtoutput.rds")
 
+# Plots quality of reads again post-filter and trim
 qualplots(file_info, type = "filtered")
 
 
 ## DADA2 learn error rates  ----------------------------
 
-
+# Read back in the data frame of file paths if necessary
 file_info <- readRDS("file_info.rds")
-create_and_plot_error_profile(file_info, bases = 1e6) ; beep("treasure") # writes the error profile RDS files
+# Makes error profiles, plots them, and saves data in rds files
+create_and_plot_error_profile(file_info, bases = 1e6) ; beep("treasure") 
 
-# First time:
+# First time (250, 250 trim):
   # Fwd: 14274480 total bases in 59477 reads from 1 samples will be used for learning the error rates
   # Rev: 15115440 total bases in 62981 reads from 1 samples will be used for learning the error rates.
-# Second time:
+# Second time (284, 224 trim):
   # 17072666 total bases in 62309 reads from 1 samples will be used for learning the error rates.
   # 13792086 total bases in 64449 reads from 1 samples will be used for learning the error rates.
 
+# Read the error profiles back in as individual variables
 errF <- readRDS("error_profile_fwd.rds")
 errR <- readRDS("error_profile_rev.rds")
 
+# Remove sequencing errors
 dadaFs <- dada(list.files(file_info$filt_dir[1], full.names = TRUE),
                err = errF, 
                multithread = TRUE, verbose = FALSE) #; beep()
@@ -82,33 +93,39 @@ dadaRs <- dada(list.files(file_info$filt_dir[2], full.names = TRUE),
 
 ## DADA2 pick sequence variants  ----------------------
 
-
+# Merge trimmed and filtered forward and reverse reads
 mergers <- mergePairs(dadaF = dadaFs,
                       derepF = list.files(file_info$filt_dir[1], full.names = TRUE),
                       dadaR = dadaRs,
                       derepR = list.files(file_info$filt_dir[2], full.names = TRUE),
                       verbose = FALSE) 
 seqtab <- makeSequenceTable(mergers)
+# Check read sums
 rowSums(seqtab)
+# Check data
 view(seqtab)
+# Save for later
 saveRDS(seqtab, "seqtab.rds"); beep("treasure")
 # seqtab <- readRDS("seqtab.rds")
 
+# Total number of SVs for each sample
 SVs_found_by_sample <- make_SV_summary(as.data.frame(seqtab)) # this function takes so long, needs troubleshooting... there is probably a more efficient way to do this
 summary(SVs_found_by_sample$SVs)
-# min is 113, median is 365, max is 364
+# min is 113 SVs, median is 365, max is 364
 
 
-## Remove chimeras.-------------
+## Remove chimeras-------------
 
 seqtab_nochim <- removeBimeraDenovo(seqtab, 
                                     method = "consensus", 
                                     multithread = TRUE,
                                     verbose = TRUE) 
-# First time:
+# First time (250, 250 trim):
   # My samples have Identified 8341 bimeras out of 21279 input sequences.
-# Second time:
+# Second time (284, 224 trim):
  # 6131 bimeras out of 18202 input sequences.
+
+# How many SVs each sample has, after chimera removal
 # View(make_SV_summary(seqtab_nochim))
 summary(make_SV_summary(as.data.frame(seqtab_nochim))$SVs)
 # First time:
@@ -130,15 +147,15 @@ sort(rowSums(seqtab_nochim))
 saveRDS(seqtab_nochim, 'seqtab_nochim.rds')
 
 
-meta <- read.table("/Users/emilykibbler/Documents/Classes/BMS_690/cov-project/metadata.tsv", sep = "\t", header = T)
+meta <- read.table("metadata.tsv", sep = "\t", header = T)
 head(meta)
 row.names(meta) <- meta$sample.id
 saveRDS(meta, "meta.rds")
 
 
-# Phyloseq First look  ------------------------------
+## Species assignment and cleaning followed by rarefaction  --------------------------
 
-# # load data if necessary
+# load data if necessary
 seqtab_nochim <- readRDS('seqtab_nochim.rds')
 
 row.names(seqtab_nochim) <- row.names(meta)
@@ -157,7 +174,7 @@ saveRDS(phylo, "phylo.rds")
 phylo <- readRDS("phylo.rds")
 
 
-# Plot the taxa sums to see how populated each taxa is (do you have many rare taxa?)
+# Plot the taxa sums to see how populated each taxa is
 plot(sort(taxa_sums(phylo), TRUE), 
      type = "h", 
      ylim = c(0, 20)) #limit the y-axis to better see the long tail of rare taxa
@@ -169,38 +186,40 @@ phylo_ord <- ordinate(phylo, #calculate similarities
                       "jaccard", binary = TRUE) #similarity type. Jaccard is binary, Bray can be binary (unweighted) or not (weighted)
 
 all_taxa <- assignTaxonomy(seqtab_nochim, 
-                                    '/Users/emilykibbler/Desktop/projects/R/AVS_554/nasal/silva_nr99_v138.1_train_set.fa.gz',
+                                    'silva_nr99_v138.1_train_set.fa.gz',
                                     tryRC = TRUE, # If you didn't get any IDs the first time, Use this to try the reverse complement of your sequences instead
                                     minBoot = 75, verbose = TRUE); beep("treasure") 
 saveRDS(all_taxa, 'all_taxa.rds')
 write.csv(all_taxa, 'all_taxa.csv')
 
 
-# I didn't end up using this data set very much
-# I was comparing this workflow to the Qiime tutorial workflow, which did not filter by species
-# So that's why I didn't go back and rerun this even when I noticed that version 138.2 has been released
-# I do use the updated version later in this script
 
-# Initiate the data frame to bind the following chunks to
-# because I run out of memory if I try to do all 12k+ lines at once
+# Initiate the data frame to bind the following pieces to
+# Needs to be run in sections in order to avoid memory max error
 all_taxa_species <- addSpecies(all_taxa[1:2,], 
-                               '/Users/emilykibbler/Desktop/projects/R/AVS_554/nasal/silva_species_assignment_v138.1.fa.gz', 
+                               'silva_species_assignment_v138.1.fa.gz', 
                                      allowMultiple = FALSE, 
                                      verbose = FALSE)
 
-all_taxa_species <- esk_add_species(all_taxa, 3:5000, all_taxa_species, fp = '/Users/emilykibbler/Desktop/projects/R/AVS_554/nasal/silva_species_assignment_v138.1.fa.gz')
-all_taxa_species <- esk_add_species(all_taxa, 5001:10000, all_taxa_species, fp = '/Users/emilykibbler/Desktop/projects/R/AVS_554/nasal/silva_species_assignment_v138.1.fa.gz')#; beep("treasure")
-all_taxa_species <- esk_add_species(all_taxa, 10001:nrow(all_taxa), all_taxa_species, fp = '/Users/emilykibbler/Desktop/projects/R/AVS_554/nasal/silva_species_assignment_v138.1.fa.gz'); beep("treasure")
+all_taxa_species <- esk_add_species(all_taxa, 3:5000, all_taxa_species, fp = 'silva_species_assignment_v138.1.fa.gz')
+all_taxa_species <- esk_add_species(all_taxa, 5001:10000, all_taxa_species, fp = 'silva_species_assignment_v138.1.fa.gz')#; beep("treasure")
+all_taxa_species <- esk_add_species(all_taxa, 10001:nrow(all_taxa), all_taxa_species, fp = '/silva_species_assignment_v138.1.fa.gz'); beep("treasure")
 write_rds(all_taxa_species, "all_taxa_species.rds")
 
-#reload data as needed
+# The above analysis, i.e., species assignment followed by cleaning and rarefaction
+# (as opposed to rarefaction followed by species assignment)
+# was not heavily pursued in this analysis
+# The other way around was used more to bring in parallel with the Qiime workflow
+# See .sh file in this repository for that parallel analysis
+
+
 all_taxa_species <- readRDS('all_taxa_species.rds')
 meta <- readRDS("meta.rds")
 phylo <- readRDS("phylo.rds")
 
 otu_t <- otu_table(phylo, taxa_are_rows = FALSE)
 
-## create a phyloseq object with all samples
+# Create a phyloseq object with all samples
 phylo_with_species <- phyloseq(otu_table(otu_t, taxa_are_rows = FALSE), 
                                         sample_data(meta),
                                         tax_table(all_taxa_species))
@@ -224,7 +243,7 @@ saveRDS(phylo_relevant_species, "phylo_relevant_species.rds")
 
 tab <- otu_table(phylo_relevant_species, taxa_are_rows = FALSE)
 class(tab) <- "matrix"
-## you get a warning here, ignore, this is what we need to have
+# Ignore warning that prints here
 tab <- t(tab) # transpose observations to rows
 
 r_curve <- rarecurve(tab, step = 10, cex = 0.5, label = FALSE) 
@@ -234,9 +253,8 @@ summary((rowSums(otu_table(phylo_relevant_species))))
 # at this point: min 7043
 sort(rowSums(otu_table(phylo_with_species)))
 summary((rowSums(otu_table(phylo_with_species))))
-# woah min with all species is 28180, irrelevant is 3/4
+# Min with all species is 28180; irrelevant taxa are 3/4 of the data
 
-# but that is closer to what they reported in the paper
 
 phylo_rar <- rarefy_even_depth(phylo_relevant_species, 
                                         sample.size = 7043, # rarefaction depth
@@ -244,10 +262,73 @@ phylo_rar <- rarefy_even_depth(phylo_relevant_species,
                                         trimOTUs = TRUE, #remove SVs left empty
                                         rngseed = 711, 
                                         verbose = TRUE)
-# took out 310 OTUs and no samples, since I rarefied to min sample depth
+# Rarefaction removed 310 OTUs and no samples (as expected when rarefying to minimum sample depth)
 saveRDS(phylo_rar, "phylo_rar.rds")
 
+## Rarefaction followed by species assignment ----------
 
+summary((rowSums(otu_table(phylo))))
+# Min 2810, median 43614, max 79055
+
+dat <- as.data.frame(otu_table(phylo, taxa_are_rows = FALSE))
+view(dat)
+
+tab <- otu_table(phylo, taxa_are_rows = FALSE)
+class(tab) <- "matrix" # you get a warning here, ignore, this is what we need to have
+tab <- t(tab) # transpose observations to rows
+r_curve <- rarecurve(tab, step = 10, cex = 0.5, label = FALSE) 
+# I don't really get this, what is the Y axis? It's not SVs, I have way more of those
+
+phylo_no_spec_rar <- rarefy_even_depth(phylo, 
+                                       sample.size = 28000, # rarefaction depth: just above the minimum sample depth (but a nice even number)
+                                       replace = TRUE, #sampling with or without replacement
+                                       trimOTUs = TRUE, #remove SVs left empty
+                                       rngseed = 711, 
+                                       verbose = TRUE)
+phylo_no_spec_rar
+# 46 OTUs removed
+
+saveRDS(phylo_no_spec_rar, "phylo_no_spec_rar.rds")
+
+
+# Add species in now
+view(seqtab_nochim) # seqtab_nochim is what I used before as the data for this step
+# sample names are row names, ASV sequences are column names, and reads are in the cells
+class(seqtab_nochim) # matrix array
+dim(seqtab_nochim) # 76 by 12071
+
+view(phylo_no_spec_rar@otu_table)
+# I think that is the equivalent table
+class(phylo_no_spec_rar@otu_table) # phyloseq object
+dim(phylo_no_spec_rar@otu_table) # 76 by 12025
+
+all_taxa_rar <- assignTaxonomy(as.matrix(phylo_no_spec_rar@otu_table), 
+                               'silva_nr99_v138.2_toGenus_trainset.fa.gz',
+                               tryRC = TRUE, # If you didn't get any IDs the first time, Use this to try the reverse complement of your sequences instead
+                               minBoot = 75, verbose = TRUE); beep("treasure") 
+saveRDS(all_taxa_rar, 'all_taxa_rar.rds')
+write.csv(all_taxa_rar, 'all_taxa_rar.csv')
+
+
+dim(all_taxa_rar)
+
+all_taxa_species_rar <- addSpecies(all_taxa_rar[1:2,], 
+                                   'silva_v138.2_assignSpecies.fa.gz', 
+                                   allowMultiple = FALSE, 
+                                   verbose = FALSE)
+
+all_taxa_species_rar <- esk_add_species(all_taxa_rar, 3:5000, all_taxa_species_rar, fp = 'silva_v138.2_assignSpecies.fa.gz')
+all_taxa_species_rar <- esk_add_species(all_taxa_rar, 5001:10000, all_taxa_species_rar, fp = 'silva_v138.2_assignSpecies.fa.gz')#; beep("treasure")
+all_taxa_species_rar <- esk_add_species(all_taxa_rar, 10001:nrow(all_taxa_rar), all_taxa_species_rar, fp = 'silva_v138.2_assignSpecies.fa.gz'); beep("treasure")
+write_rds(all_taxa_species_rar, "all_taxa_species_rar.rds")
+
+# Put that together with the phyloseq object
+otu_t <- otu_table(phylo_rar, taxa_are_rows = FALSE)
+## create a phyloseq object with all samples
+phylo_rar_then_species <- phyloseq(otu_table(otu_t, taxa_are_rows = FALSE), 
+                                   sample_data(meta),
+                                   tax_table(all_taxa_species_rar))
+write_rds("phylo_rar_then_species.rds")
 
 ## Alpha diversity plotted against other metadata --------
 
@@ -282,95 +363,39 @@ phylo_rar_rich_df <- cbind(phylo_rar_rich, phylo_rar_even, phylo_rar_sd)
 dim(phylo_rar_rich_df) # 76 x 5
 head(phylo_rar_rich_df)
 
-## Changing order of things ----------
-
-summary((rowSums(otu_table(phylo))))
-# Min 2810, median 43614, max 79055
-
-dat <- as.data.frame(otu_table(phylo, taxa_are_rows = FALSE))
-view(dat)
-
-tab <- otu_table(phylo, taxa_are_rows = FALSE)
-class(tab) <- "matrix" # you get a warning here, ignore, this is what we need to have
-tab <- t(tab) # transpose observations to rows
-r_curve <- rarecurve(tab, step = 10, cex = 0.5, label = FALSE) 
-# I don't really get this, what is the Y axis? It's not SVs, I have way more of those
-
-phylo_no_spec_rar <- rarefy_even_depth(phylo, 
-                               sample.size = 28000, # rarefaction depth: just above the minimum sample depth (but a nice even number)
-                               replace = TRUE, #sampling with or without replacement
-                               trimOTUs = TRUE, #remove SVs left empty
-                               rngseed = 711, 
-                               verbose = TRUE)
-phylo_no_spec_rar
-# 46 OTUs removed
-
-saveRDS(phylo_no_spec_rar, "phylo_no_spec_rar.rds")
 
 
-# Add species in now
-view(seqtab_nochim) # seqtab_nochim is what I used before as the data for this step
-# sample names are row names, ASV sequences are column names, and reads are in the cells
-class(seqtab_nochim) # matrix array
-dim(seqtab_nochim) # 76 by 12071
 
-view(phylo_no_spec_rar@otu_table)
-# I think that is the equivalent table
-class(phylo_no_spec_rar@otu_table) # phyloseq object
-dim(phylo_no_spec_rar@otu_table) # 76 by 12025
+## Alpha diversity analysis, imported from Qiime analysis ----------
 
-all_taxa_rar <- assignTaxonomy(as.matrix(phylo_no_spec_rar@otu_table), 
-                           'silva_nr99_v138.2_toGenus_trainset.fa.gz',
-                           tryRC = TRUE, # If you didn't get any IDs the first time, Use this to try the reverse complement of your sequences instead
-                           minBoot = 75, verbose = TRUE); beep("treasure") 
-saveRDS(all_taxa_rar, 'all_taxa_rar.rds')
-write.csv(all_taxa_rar, 'all_taxa_rar.csv')
-
-
-dim(all_taxa_rar)
-
-all_taxa_species_rar <- addSpecies(all_taxa_rar[1:2,], 
-                               'silva_v138.2_assignSpecies.fa.gz', 
-                               allowMultiple = FALSE, 
-                               verbose = FALSE)
-
-all_taxa_species_rar <- esk_add_species(all_taxa_rar, 3:5000, all_taxa_species_rar, fp = 'silva_v138.2_assignSpecies.fa.gz')
-all_taxa_species_rar <- esk_add_species(all_taxa_rar, 5001:10000, all_taxa_species_rar, fp = 'silva_v138.2_assignSpecies.fa.gz')#; beep("treasure")
-all_taxa_species_rar <- esk_add_species(all_taxa_rar, 10001:nrow(all_taxa_rar), all_taxa_species_rar, fp = 'silva_v138.2_assignSpecies.fa.gz'); beep("treasure")
-write_rds(all_taxa_species_rar, "all_taxa_species_rars.rds")
-
-# Put that together with the phyloseq object
-otu_t <- otu_table(phylo_rar, taxa_are_rows = FALSE)
-## create a phyloseq object with all samples
-phylo_rar_then_species <- phyloseq(otu_table(otu_t, taxa_are_rows = FALSE), 
-                                        sample_data(meta),
-                                        tax_table(all_taxa_species_rar))
-
-
-##Alpha diversity analysis, imported from Qiime analysis ----------
+### Faith -----------
 faith <- read.table("faith_group_signif.tsv", sep = "\t", header = TRUE)
 faith <- rename(faith, "Value" = faith_pd)
 # wilcox.test(subset(faith, SarsCov2 == "pos")$Value, subset(faith, SarsCov2 == "neg")$Value)
 t.test(subset(faith, SarsCov2 == "pos")$Value, subset(faith, SarsCov2 == "neg")$Value)
 
+### Pielou's evenness ---------------
 evenness <- read.table("even_group_signif.tsv", sep = "\t", header = TRUE)
 evenness <- rename(evenness, "Value" = pielou_evenness)
 t.test(subset(evenness, SarsCov2 == "pos")$Value, subset(evenness, SarsCov2 == "neg")$Value)
 # wilcox.test(subset(evenness, SarsCov2 == "pos")$Value, subset(evenness, SarsCov2 == "neg")$Value)
 
+### Shannon ---------------
 shannon <- read.table("shannon_group_signif.tsv", sep = "\t", header = TRUE)
 shannon <- rename(shannon, "Value" = shannon_entropy)
 t.test(subset(shannon, SarsCov2 == "pos")$Value, subset(shannon, SarsCov2 == "neg")$Value)
 # wilcox.test(subset(shannon, SarsCov2 == "pos")$Value, subset(shannon, SarsCov2 == "neg")$Value)
+
+### Observed features/SVs -----------------
 
 obs <- read.table("observed_stats.tsv", sep = "\t", header = T)
 obs <- rename(obs, "Value" = observed_features)
 obs$Metric <- "Observed"
 t.test(subset(obs, SarsCov2 == "pos")$Value, subset(obs, SarsCov2 == "neg")$Value)
 
-## DADA analysis, alpha div------------------
+## Alpha diversity, DADA analysis ------------------
 
-# Rare, then species
+### Rarefaction, then species assignment workflow ------------
 diversity <- estimate_richness(phylo_no_spec_rar, measures = c("Shannon", "Observed"))
 even <- evenness(phylo_no_spec_rar, index = "pielou")
 diversity <- cbind(diversity, even)
@@ -399,7 +424,7 @@ t.test(subset(diversity, SarsCov2 == "pos")$pielou, subset(diversity, SarsCov2 =
 diagdds = phyloseq_to_deseq2(phylo_rar_then_species, ~ SarsCov2)
 
 # calculate differential abundance
-gm_mean =  function(x, na.rm = TRUE){
+gm_mean <-  function(x, na.rm = TRUE){
   exp(sum(log(x[x > 0]), na.rm = na.rm) / length(x))
 }
 geoMeans = apply(counts(diagdds), 1, gm_mean)
@@ -413,7 +438,7 @@ alpha = 0.01
 sigtab = res[(res$padj < alpha), ]
 sigtab = cbind(as(sigtab, "data.frame"), 
                as(tax_table(phylo_rar_then_species)[rownames(sigtab), ], 
-                  "matrix")) #CHANGE ME if you didn't subset your data
+                  "matrix")) 
 
 head(sigtab)
 dim(sigtab) 
@@ -469,7 +494,7 @@ da$Genus = ifelse(is.na(da$Genus),
                       paste(da$Genus)) 
 
 da$Genus = ifelse(da$Genus == "NA", 
-                  paste(da$kingdom), 
+                  paste(da$Domain), 
                   paste(da$Genus)) 
 da[5,"Genus"] <- "Mitochondria_A"
 da[6,"Genus"] <- "Mitochondria_B"
@@ -586,14 +611,12 @@ tax.df$Genus.species <- str_remove_all(tax.df$Genus.species, " NA")
 # set column of combined genus and species names as the column names for the predictors, replacing the full SV
 colnames(predictors) <- tax.df$Genus.species
 
-# clean up some of the other taxa info
-# I think I want to keep these
+# If desired, clean up some of the other taxa info
 # colnames(predictors) = gsub("_unclassified", "", colnames(predictors))
 # colnames(predictors) = gsub("_Intercertae_Sedis", "", colnames(predictors))
 
 
-
-### start here when choosing factors, can reuse the above lines as needed. one example for factorial data, and one for numeric data is provided. select as needed.
+# Choose factor(s) for analysis
 
 # Make one column for our outcome/response variable. Choose which one applies to the thing you want to test, and then follow factorial or numeric through the rest of the code section.
 response <- as.factor(sample_data(phylo_rar_then_species)$SarsCov2) 
@@ -610,7 +633,7 @@ response.pf <- rfPermute(response ~. , data = rf.data, na.action = na.omit, ntre
 
 print(response.pf)
 
-# paste the print out here, especially the OOB error. 1-(Out-of-the-box error) = accuracy of your model
+# Output. 1-(Out-of-the-box error) = accuracy of model
   
   # neg pos pct.correct LCI_0.95 UCI_0.95
   # neg      36   2        94.7     82.3     99.4
@@ -622,7 +645,7 @@ saveRDS(response.pf, "response_pf.rds")
 response.pf <- readRDS("response_pf.rds")
 
 
-# grab which features were labeled "important"
+# Grab which features were labeled "important"
 imp <- importance(response.pf, scale = TRUE)
 
 # Make a data frame with predictor names and their importance
@@ -633,7 +656,7 @@ imp.df <- data.frame(predictors = rownames(imp), imp)
 imp.sig <- subset(imp.df, MeanDecreaseAccuracy.pval <= 0.05) 
 print(dim(imp.sig)) # 59 x 9
 
-# or For factorial data, sort by importance amount
+# For multi-factorial data, sort by importance amount
 imp.sort <- imp.sig[order(imp.sig$MeanDecreaseAccuracy),]
 
 #create levels to the factor based on SV table
