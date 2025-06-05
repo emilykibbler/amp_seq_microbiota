@@ -1,3 +1,5 @@
+# Functions needed for this analaysis
+
 ## Lab 2 ---------
 
 search_strings <- function(bases, fastq_dot_gz) {
@@ -43,7 +45,7 @@ metadata_import <- function(types = c("fwd", "rev")) {
   return(info)
 }
 
-# This function works but it definitely needs to be simplified
+# FIXME: This function works but could be simplified
 
 qualplots <- function(info, type = "raw") {
   if (type == "raw" | type == "Raw" | type == "RAW") {
@@ -74,7 +76,13 @@ qualplots <- function(info, type = "raw") {
   } else {print("Type of data should be raw or filtered")}
 }
 
-filtering <- function(dat, trimleft = 10, trimright = 0, trunclen = 0) {
+# Adds layers including error messages and plotting to filterAndTrim
+# Only used for single direction
+
+filtering <- function(dat, 
+                      trimleft = 10, # Default is 10, to cut off any adapter sequence
+                      trimright = 0, 
+                      trunclen = 0) {
   if (sum(grep("filt.fastq", list.files(paste0(getwd(), "/", dat$data_subset[1], "_filtered")))) != 0) {
     stop("There are already filtered files. Delete or move them.")
   }
