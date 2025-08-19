@@ -1,11 +1,20 @@
 ---
 title: "Semester project graphs"
-output: html_document
 date: "2025-04"
+output: 
+  pdf_document:
+    pandoc_args: ["--variable", "colorlinks=true", "--variable", "urlcolor=blue"]
+header-includes:
+  - \usepackage{xcolor}
+  - \usepackage{hyperref}
 ---
 
-This R Markdown file shows the graphs, with the corresponding code, that ended up in my final term paper   
-The manuscript is available in full here:   https://docs.google.com/document/d/1q4icwy0ZIGTJOfsY6cBDnvcO1PkW_Xpve7MGYT9Gw9k/edit?usp=sharing
+This R Markdown file shows the graphs, with the corresponding code, that ended up in my final term paper.   
+
+The manuscript is available in full [here](https://docs.google.com/document/d/1q4icwy0ZIGTJOfsY6cBDnvcO1PkW_Xpve7MGYT9Gw9k/edit?usp=sharing)
+
+The entire analysis code is available at github.com/emilykibbler/amp_seq_microbiota
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -16,24 +25,25 @@ library(ggpubr)
 library(VennDiagram)
 library(microbiome)
 library(viridis)
+
 ```
 
 
 
 ``` {r read data, echo = FALSE}
-track <- readRDS('track.rds') # figure 1
-phylo_decontam_rar <- readRDS("phylo_decontam_rar.rds") # figure 2, 3, 5, 6
-clean_phylo_rarified <- readRDS("clean_phylo_rarified.rds") # figure 2
-phylo_species_then_decontam_rar <- readRDS("phylo_species_then_decontam_rar.rds") # figure 3
-chisq_summary <- readRDS("chisq_summary.rds") # figure 4
-patient_data_correlation_summary <- readRDS("numeric_patient_data_correlation_summary.rds") # figure 4
-phylo <- readRDS("phylo.rds") # figure 7
-phylo.coreW_25 <- readRDS("phylo.coreW_25.rds") # figure 8
-atb_phylo.coreW_35 <- readRDS("atb_phylo.coreW_35.rds") # figure 9
-no_atb_phylo.coreW_35 <- readRDS("no_atb_phylo.coreW_35.rds") # figure 9
-core_SVs_sig_diff_on_wilcox_test <- readRDS("core_SVs_sig_diff_on_wilcox_test.rds") # figure 9
-wilcox_sig_SVs <- readRDS("wilcox_sig_SVs.rds") # figure 10
-sigtab <- readRDS("sigtab.rds") # figure 12
+track <- readRDS('./nasal/track.rds') # figure 1
+phylo_decontam_rar <- readRDS("./nasal/phylo_decontam_rar.rds") # figure 2, 3, 5, 6
+clean_phylo_rarified <- readRDS("./nasal/clean_phylo_rarified.rds") # figure 2
+phylo_species_then_decontam_rar <- readRDS("./nasal/phylo_species_then_decontam_rar.rds") # figure 3
+chisq_summary <- readRDS("./nasal/chisq_summary.rds") # figure 4
+patient_data_correlation_summary <- readRDS("./nasal/numeric_patient_data_correlation_summary.rds") # figure 4
+phylo <- readRDS("./nasal/phylo.rds") # figure 7
+phylo.coreW_25 <- readRDS("./nasal/phylo.coreW_25.rds") # figure 8
+atb_phylo.coreW_35 <- readRDS("./nasal/atb_phylo.coreW_35.rds") # figure 9
+no_atb_phylo.coreW_35 <- readRDS("./nasal/no_atb_phylo.coreW_35.rds") # figure 9
+core_SVs_sig_diff_on_wilcox_test <- readRDS("./nasal/core_SVs_sig_diff_on_wilcox_test.rds") # figure 9
+wilcox_sig_SVs <- readRDS("./nasal/wilcox_sig_SVs.rds") # figure 10
+sigtab <- readRDS("./nasal/sigtab.rds") # figure 12
 
 ```
 
